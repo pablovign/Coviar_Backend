@@ -1,0 +1,143 @@
+package handler
+
+import (
+	"log"
+	"net/http"
+	"strconv"
+	"time"
+
+	"coviar_backend/internal/domain"
+	"coviar_backend/internal/service"
+	"coviar_backend/pkg/httputil"
+	"coviar_backend/pkg/jwt"
+	"coviar_backend/pkg/router"
+)
+
+type CuentaHandler struct {
+	service   *service.CuentaService
+	jwtSecret string
+}
+
+func NewCuentaHandler(service *service.CuentaService, jwtSecret string) *CuentaHandler {
+	return &CuentaHandler{
+		service:   service,
+		jwtSecret: jwtSecret,
+	}
+}
+
+func (h *CuentaHandler) Login(w http.ResponseWriter, r *http.Request) {
+	log.Printf("🔐 Login request recibido")
+	var req domain.CuentaRequest
+	if err := httputil.DecodeJSON(r, &req); err != nil {
+		log.Printf("❌ Error decodificando JSON: %v", err)
+		httputil.RespondError(w, http.StatusBadRequest, "JSON inválido")
+		return
+	}
+
+	log.Printf("📧 Intentando login con email: %s", req.EmailLogin)
+	log.Printf("🔑 Password recibido: %d caracteres", len(req.Password))
+
+	cuenta, err := h.service.Login(r.Context(), &req)
+	if err != nil {
+		log.Printf("❌ Error en login: %v", err)
+		httputil.HandleServiceError(w, err)
+		return
+	}
+
+	log.Printf("✅ Login exitoso para cuenta ID: %d", cuenta.ID)
+
+	// Generar JWT token (válido por 24 horas)
+	accessToken, err := jwt.GenerateToken(
+		cuenta.ID,
+		cuenta.EmailLogin,
+		string(cuenta.Tipo),
+		h.jwtSecret,
+		24*time.Hour,
+	)
+	if err != nil {
+		log.Printf("❌ Error generando access token: %v", err)
+		httputil.RespondError(w, http.StatusInternalServerError, "Error generando token")
+		return
+	}
+
+	// Generar refresh token (válido por 7 días)
+	refreshToken, err := jwt.GenerateRefreshToken(
+		cuenta.ID,
+		cuenta.EmailLogin,
+		string(cuenta.Tipo),
+		h.jwtSecret,
+	)
+	if err != nil {
+		log.Printf("❌ Error generando refresh token: %v", err)
+		httputil.RespondError(w, http.StatusInternalServerError, "Error generando refresh token")
+		return
+	}
+
+	// Establecer cookie de access token (HttpOnly, Secure en producción)
+	http.SetCookie(w, &http.Cookie{
+		Name:     "auth_token",
+		Value:    accessToken,
+		Path:     "/",
+		MaxAge:   24 * 60 * 60, // 24 horas en segundos
+		HttpOnly: true,
+		Secure:   false, // Cambiar a true en producción con HTTPS
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	// Establecer cookie de refresh token (HttpOnly, Secure en producción)
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    refreshToken,
+		Path:     "/",
+		MaxAge:   7 * 24 * 60 * 60, // 7 días en segundos
+		HttpOnly: true,
+		Secure:   false, // Cambiar a true en producción con HTTPS
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	log.Printf("🍪 Cookies establecidas para cuenta ID: %d", cuenta.ID)
+
+	// Responder con datos de la cuenta (sin incluir tokens en JSON)
+	httputil.RespondJSON(w, http.StatusOK, cuenta)
+}
+
+func (h *CuentaHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+	idStr := router.GetParam(r, "id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		httputil.RespondError(w, http.StatusBadRequest, "ID inválido")
+		return
+	}
+
+	cuenta, err := h.service.GetByIDWithBodega(r.Context(), id)
+	if err != nil {
+		httputil.HandleServiceError(w, err)
+		return
+	}
+
+	httputil.RespondJSON(w, http.StatusOK, cuenta)
+}
+
+func (h *CuentaHandler) UpdatePassword(w http.ResponseWriter, r *http.Request) {
+	idStr := router.GetParam(r, "id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		httputil.RespondError(w, http.StatusBadRequest, "ID inválido")
+		return
+	}
+
+	var req struct {
+		Password string `json:"password"`
+	}
+	if err := httputil.DecodeJSON(r, &req); err != nil {
+		httputil.RespondError(w, http.StatusBadRequest, "JSON inválido")
+		return
+	}
+
+	if err := h.service.UpdatePassword(r.Context(), id, req.Password); err != nil {
+		httputil.HandleServiceError(w, err)
+		return
+	}
+
+	httputil.RespondJSON(w, http.StatusOK, map[string]string{"mensaje": "Contraseña actualizada"})
+}
