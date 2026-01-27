@@ -35,7 +35,7 @@ type CuentaRepository interface {
 type ResponsableRepository interface {
 	Create(ctx context.Context, tx Transaction, responsable *domain.Responsable) (int, error)
 	FindByID(ctx context.Context, id int) (*domain.Responsable, error)
-	FindByBodegaID(ctx context.Context, bodegaID int) ([]*domain.Responsable, error)
+	FindByCuentaID(ctx context.Context, cuentaID int) ([]*domain.Responsable, error)
 	Update(ctx context.Context, tx Transaction, responsable *domain.Responsable) error
 	Delete(ctx context.Context, tx Transaction, id int) error
 }

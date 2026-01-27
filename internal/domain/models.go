@@ -10,14 +10,14 @@ type Bodega struct {
 	ID                 int       `json:"id_bodega,omitempty"`
 	RazonSocial        string    `json:"razon_social"`
 	NombreFantasia     string    `json:"nombre_fantasia"`
-	CUIT               string    `json:"cuit"`
-	InvBod             *string   `json:"inv_bod,omitempty"`
-	InvVin             *string   `json:"inv_vin,omitempty"`
+	CUIT               string    `json:"cuit"`              // char(11), check: ^[0-9]{11}$
+	InvBod             *string   `json:"inv_bod,omitempty"` // char(6)
+	InvVin             *string   `json:"inv_vin,omitempty"` // char(6)
 	Calle              string    `json:"calle"`
-	Numeracion         string    `json:"numeracion"`
+	Numeracion         string    `json:"numeracion"` // default 'S/N'
 	IDLocalidad        int       `json:"id_localidad"`
-	Telefono           string    `json:"telefono"`
-	EmailInstitucional string    `json:"email_institucional"`
+	Telefono           string    `json:"telefono"`            // check: ^[0-9]+$
+	EmailInstitucional string    `json:"email_institucional"` // check: like '%@%'
 	FechaRegistro      time.Time `json:"fecha_registro,omitempty"`
 }
 
@@ -53,8 +53,8 @@ const (
 
 type Cuenta struct {
 	ID            int        `json:"id_cuenta,omitempty"`
-	Tipo          TipoCuenta `json:"tipo"`
-	IDBodega      *int       `json:"id_bodega,omitempty"`
+	Tipo          TipoCuenta `json:"tipo"`                // ENUM: BODEGA, ADMINISTRADOR_APP
+	IDBodega      *int       `json:"id_bodega,omitempty"` // nullable, depende de tipo
 	EmailLogin    string     `json:"email_login"`
 	PasswordHash  string     `json:"-"`
 	FechaRegistro time.Time  `json:"fecha_registro,omitempty"`
@@ -70,14 +70,15 @@ type CuentaRequest struct {
 // ============================================
 
 type Responsable struct {
-	ID            int       `json:"id_responsable,omitempty"`
-	IDBodega      int       `json:"id_bodega"`
-	Nombre        string    `json:"nombre"`
-	Apellido      string    `json:"apellido"`
-	Cargo         string    `json:"cargo"`
-	DNI           *string   `json:"dni,omitempty"`
-	Activo        bool      `json:"activo"`
-	FechaRegistro time.Time `json:"fecha_registro,omitempty"`
+	ID            int        `json:"id_responsable,omitempty"`
+	IDCuenta      int        `json:"id_cuenta"`
+	Nombre        string     `json:"nombre"`
+	Apellido      string     `json:"apellido"`
+	Cargo         string     `json:"cargo"`
+	DNI           string     `json:"dni"` // varchar(8), check: ^[0-9]{7,8}$
+	Activo        bool       `json:"activo"`
+	FechaRegistro time.Time  `json:"fecha_registro,omitempty"`
+	FechaBaja     *time.Time `json:"fecha_baja,omitempty"`
 }
 
 type ResponsableRequest struct {
