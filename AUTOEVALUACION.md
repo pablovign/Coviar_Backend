@@ -12,7 +12,9 @@ El sistema de autoevaluación permite que las cuentas de tipo **BODEGA** complet
 
 **Método:** `POST`  
 **Endpoint:** `/api/autoevaluaciones`  
-**Requiere:** Autenticación
+**Requiere:** Autenticación JWT (cookie `auth_token`)
+
+**Importante:** Debes estar autenticado (hacer login primero) para acceder a este endpoint.
 
 **Body:**
 ```json

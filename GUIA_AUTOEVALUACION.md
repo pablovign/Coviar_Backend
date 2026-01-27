@@ -62,58 +62,108 @@ Debería ver:
 
 ## 🧪 Pruebas Rápidas
 
-### Opción 1: Usando curl
+### ⚠️ IMPORTANTE: Autenticación Requerida
+
+**Todos los endpoints de autoevaluación requieren autenticación JWT.** Debes completar el flujo de login antes de acceder a estos endpoints.
+
+### Opción 1: Script Automatizado (RECOMENDADO)
 
 ```bash
-# 1. Crear autoevaluación
+chmod +x test_autoevaluacion.sh
+./test_autoevaluacion.sh
+```
+
+Este script automáticamente:
+1. ✅ Registra una nueva bodega
+2. ✅ Hace login y obtiene token JWT
+3. ✅ Crea una autoevaluación
+4. ✅ Obtiene segmentos disponibles
+5. ✅ Selecciona un segmento
+6. ✅ Obtiene la estructura del cuestionario
+
+### Opción 2: Usando curl manualmente
+
+Importante: **Guardar cookies con `-c cookies.txt` en login y enviarlas con `-b cookies.txt` en cada petición**
+
+```bash
+# 1. Registrar una bodega
+curl -X POST http://localhost:8080/api/registro \
+  -H "Content-Type: application/json" \
+  -c cookies.txt \
+  -d '{
+    "bodega": {
+      "razon_social": "Bodega Test",
+      "nombre_fantasia": "Test",
+      "cuit": "12345678901",
+      "calle": "Calle Principal",
+      "numeracion": "123",
+      "id_localidad": 1,
+      "telefono": "1234567890",
+      "email_institucional": "test@bodega.com"
+    },
+    "cuenta": {
+      "email_login": "test@bodega.com",
+      "password": "SecurePass123!"
+    },
+    "responsable": {
+      "nombre": "Juan",
+      "apellido": "Pérez",
+      "cargo": "Gerente",
+      "dni": "12345678"
+    }
+  }'
+
+# 2. Hacer login (guarda token en cookies.txt)
+curl -X POST http://localhost:8080/api/login \
+  -H "Content-Type: application/json" \
+  -c cookies.txt \
+  -d '{
+    "email_login": "test@bodega.com",
+    "password": "SecurePass123!"
+  }'
+
+# 3. Crear autoevaluación (usar -b para enviar cookies)
 AUTOEVALID=$(curl -s -X POST http://localhost:8080/api/autoevaluaciones \
   -H "Content-Type: application/json" \
-  -H "Cookie: auth_token=<JWT_TOKEN>" \
+  -b cookies.txt \
   -d '{"id_bodega": 1}' | jq -r '.id_autoevaluacion')
 
-echo "Autoevaluación creada: $AUTOEVALID"
+echo "✅ Autoevaluación creada: $AUTOEVALID"
 
-# 2. Obtener segmentos
+# 4. Obtener segmentos
 curl -X GET http://localhost:8080/api/autoevaluaciones/$AUTOEVALID/segmentos \
-  -H "Cookie: auth_token=<JWT_TOKEN>" \
-  -H "Content-Type: application/json"
-
-# 3. Seleccionar segmento
-curl -X PUT http://localhost:8080/api/autoevaluaciones/$AUTOEVALID/segmento \
-  -H "Cookie: auth_token=<JWT_TOKEN>" \
   -H "Content-Type: application/json" \
+  -b cookies.txt
+
+# 5. Seleccionar segmento
+curl -X PUT http://localhost:8080/api/autoevaluaciones/$AUTOEVALID/segmento \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
   -d '{"id_segmento": 2}'
 
-# 4. Obtener estructura
+# 6. Obtener estructura
 curl -X GET http://localhost:8080/api/autoevaluaciones/$AUTOEVALID/estructura \
-  -H "Cookie: auth_token=<JWT_TOKEN>" \
-  -H "Content-Type: application/json"
-
-# 5. Guardar respuestas
-curl -X POST http://localhost:8080/api/autoevaluaciones/$AUTOEVALID/respuestas \
-  -H "Cookie: auth_token=<JWT_TOKEN>" \
   -H "Content-Type: application/json" \
+  -b cookies.txt
+
+# 7. Guardar respuestas
+curl -X POST http://localhost:8080/api/autoevaluaciones/$AUTOEVALID/respuestas \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
   -d '{
     "respuestas": [
       {"id_indicador": 1, "id_nivel_respuesta": 2},
-      {"id_indicador": 2, "id_nivel_respuesta": 3},
-      {"id_indicador": 3, "id_nivel_respuesta": 2},
-      {"id_indicador": 4, "id_nivel_respuesta": 2}
+      {"id_indicador": 2, "id_nivel_respuesta": 3}
     ]
   }'
 
-# 6. Completar autoevaluación
+# 8. Completar autoevaluación
 curl -X POST http://localhost:8080/api/autoevaluaciones/$AUTOEVALID/completar \
-  -H "Cookie: auth_token=<JWT_TOKEN>" \
-  -H "Content-Type: application/json"
+  -H "Content-Type: application/json" \
+  -b cookies.txt
 ```
 
-### Opción 2: Usando Postman/Insomnia
-
-1. Importar las rutas desde la documentación en `AUTOEVALUACION.md`
-2. Autenticarse primero con `/api/login`
-3. Copiar el token JWT en las cookies
-4. Ejecutar los 6 endpoints en orden
+**Clave:** La opción `-b cookies.txt` envía las cookies de autenticación con cada petición. Sin esto, recibirás error 401 o 500.
 
 ---
 
