@@ -160,3 +160,102 @@ type RegistroResponse struct {
 	IDResponsable int    `json:"id_responsable"`
 	Mensaje       string `json:"mensaje"`
 }
+
+// ============================================
+// MODELOS DE AUTOEVALUACIÓN
+// ============================================
+
+type EstadoAutoevaluacion string
+
+const (
+	EstadoPendiente  EstadoAutoevaluacion = "PENDIENTE"
+	EstadoCompletada EstadoAutoevaluacion = "COMPLETADA"
+	EstadoCancelada  EstadoAutoevaluacion = "CANCELADA"
+)
+
+type Segmento struct {
+	ID          int    `json:"id_segmento"`
+	Nombre      string `json:"nombre"`
+	MinTuristas int    `json:"min_turistas"`
+	MaxTuristas *int   `json:"max_turistas,omitempty"`
+}
+
+type NivelSostenibilidad struct {
+	ID         int    `json:"id_nivel_sostenibilidad"`
+	IDSegmento int    `json:"id_segmento"`
+	Nombre     string `json:"nombre"`
+	MinPuntaje int    `json:"min_puntaje"`
+	MaxPuntaje int    `json:"max_puntaje"`
+}
+
+type Capitulo struct {
+	ID          int    `json:"id_capitulo"`
+	Nombre      string `json:"nombre"`
+	Descripcion string `json:"descripcion"`
+	Orden       int    `json:"orden"`
+}
+
+type Indicador struct {
+	ID          int    `json:"id_indicador"`
+	IDCapitulo  int    `json:"id_capitulo"`
+	Nombre      string `json:"nombre"`
+	Descripcion string `json:"descripcion"`
+	Orden       int    `json:"orden"`
+}
+
+type IndicadorConHabilitacion struct {
+	Indicador        *Indicador        `json:"indicador"`
+	NivelesRespuesta []*NivelRespuesta `json:"niveles_respuesta"`
+	Habilitado       bool              `json:"habilitado"`
+}
+
+type NivelRespuesta struct {
+	ID          int    `json:"id_nivel_respuesta"`
+	IDIndicador int    `json:"id_indicador"`
+	Nombre      string `json:"nombre"`
+	Descripcion string `json:"descripcion"`
+	Puntos      int    `json:"puntos"`
+}
+
+type Autoevaluacion struct {
+	ID          int                  `json:"id_autoevaluacion"`
+	FechaInicio time.Time            `json:"fecha_inicio"`
+	FechaFin    *time.Time           `json:"fecha_fin,omitempty"`
+	Estado      EstadoAutoevaluacion `json:"estado"`
+	IDBodega    int                  `json:"id_bodega"`
+	IDSegmento  *int                 `json:"id_segmento,omitempty"`
+}
+
+type Respuesta struct {
+	ID               int `json:"id_respuesta"`
+	IDNivelRespuesta int `json:"id_nivel_respuesta"`
+	IDIndicador      int `json:"id_indicador"`
+	IDAutoevaluacion int `json:"id_autoevaluacion"`
+}
+
+type EstructuraAutoevaluacion struct {
+	Capitulos []*CapituloEstructura `json:"capitulos"`
+}
+
+type CapituloEstructura struct {
+	Capitulo    *Capitulo                   `json:"capitulo"`
+	Indicadores []*IndicadorConHabilitacion `json:"indicadores"`
+}
+
+// DTOs
+type CreateAutoevaluacionRequest struct {
+	IDBodega int `json:"id_bodega"`
+}
+
+type SeleccionarSegmentoRequest struct {
+	IDSegmento int `json:"id_segmento"`
+}
+
+type GuardarRespuestaRequest struct {
+	IDIndicador      int `json:"id_indicador"`
+	IDNivelRespuesta int `json:"id_nivel_respuesta"`
+}
+
+type GuardarRespuestasRequest struct {
+	Respuestas []GuardarRespuestaRequest `json:"respuestas"`
+}

@@ -71,3 +71,35 @@ type UbicacionRepository interface {
 type TransactionManager interface {
 	BeginTx(ctx context.Context) (Transaction, error)
 }
+
+// Repositorios para Autoevaluación
+type SegmentoRepository interface {
+	FindAll(ctx context.Context) ([]*domain.Segmento, error)
+	FindByID(ctx context.Context, id int) (*domain.Segmento, error)
+}
+
+type AutoevaluacionRepository interface {
+	Create(ctx context.Context, tx Transaction, auto *domain.Autoevaluacion) (int, error)
+	FindByID(ctx context.Context, id int) (*domain.Autoevaluacion, error)
+	UpdateSegmento(ctx context.Context, id int, idSegmento int) error
+	Complete(ctx context.Context, id int) error
+}
+
+type CapituloRepository interface {
+	FindAll(ctx context.Context) ([]*domain.Capitulo, error)
+}
+
+type IndicadorRepository interface {
+	FindByCapitulo(ctx context.Context, idCapitulo int) ([]*domain.Indicador, error)
+	FindBySegmento(ctx context.Context, idSegmento int) ([]int, error)
+}
+
+type NivelRespuestaRepository interface {
+	FindByIndicador(ctx context.Context, idIndicador int) ([]*domain.NivelRespuesta, error)
+}
+
+type RespuestaRepository interface {
+	Create(ctx context.Context, tx Transaction, respuesta *domain.Respuesta) (int, error)
+	FindByAutoevaluacion(ctx context.Context, idAutoevaluacion int) ([]*domain.Respuesta, error)
+	DeleteByAutoevaluacion(ctx context.Context, idAutoevaluacion int) error
+}
