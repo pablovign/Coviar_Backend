@@ -69,3 +69,20 @@ func (r *RespuestaRepository) DeleteByAutoevaluacion(ctx context.Context, idAuto
 
 	return nil
 }
+
+func (r *RespuestaRepository) CalculateTotalScore(ctx context.Context, idAutoevaluacion int) (int, error) {
+	query := `
+		SELECT COALESCE(SUM(nr.puntos), 0) as total_puntos
+		FROM respuestas r
+		INNER JOIN niveles_respuesta nr ON r.id_nivel_respuesta = nr.id_nivel_respuesta
+		WHERE r.id_autoevaluacion = $1
+	`
+
+	var totalPuntos int
+	err := r.db.QueryRowContext(ctx, query, idAutoevaluacion).Scan(&totalPuntos)
+	if err != nil {
+		return 0, fmt.Errorf("error calculating total score: %w", err)
+	}
+
+	return totalPuntos, nil
+}

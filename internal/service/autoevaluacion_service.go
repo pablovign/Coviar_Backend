@@ -246,7 +246,7 @@ func (s *AutoevaluacionService) GuardarRespuestas(ctx context.Context, idAutoeva
 }
 
 // CompletarAutoevaluacion marca la autoevaluación como completada
-func (s *AutoevaluacionService) CompletarAutoevaluacion(ctx context.Context, idAutoevaluacion int) error {
+/*func (s *AutoevaluacionService) CompletarAutoevaluacion(ctx context.Context, idAutoevaluacion int) error {
 	// Verificar que la autoevaluación existe
 	auto, err := s.autoevaluacionRepo.FindByID(ctx, idAutoevaluacion)
 	if err != nil {
@@ -270,6 +270,67 @@ func (s *AutoevaluacionService) CompletarAutoevaluacion(ctx context.Context, idA
 
 	// Marcar como completada
 	err = s.autoevaluacionRepo.Complete(ctx, idAutoevaluacion)
+	if err != nil {
+		return fmt.Errorf("error completing autoevaluacion: %w", err)
+	}
+
+	return nil
+}*/
+
+// CompletarAutoevaluacion marca la autoevaluación como completada
+func (s *AutoevaluacionService) CompletarAutoevaluacion(ctx context.Context, idAutoevaluacion int) error { 
+	auto, err := s.autoevaluacionRepo.FindByID(ctx, idAutoevaluacion)
+	if err != nil {
+		return fmt.Errorf("error finding autoevaluacion: %w", err)
+	}
+
+	if auto == nil {
+		return domain.ErrNotFound
+	}
+
+	// Verificar que tenga segmento seleccionado                                              
+	if auto.IDSegmento == nil {
+		return fmt.Errorf("autoevaluacion must have segmento selected")
+	}
+
+	// Obtener respuestas para validar que todas las preguntas fueron respondidas
+	respuestas, err := s.respuestaRepo.FindByAutoevaluacion(ctx, idAutoevaluacion)
+	if err != nil {
+		return fmt.Errorf("error getting respuestas: %w", err)
+	}
+
+	// Validación básica: debe haber al menos una respuesta
+	if len(respuestas) == 0 {
+		return fmt.Errorf("autoevaluacion must have at least one respuesta")
+	}
+
+	// Calcular puntaje total                                                                 
+	puntajeTotal, err := s.respuestaRepo.CalculateTotalScore(ctx, idAutoevaluacion)
+	if err != nil {
+		return fmt.Errorf("error calculating total score: %w", err)
+	}
+
+	// Obtener niveles de sostenibilidad para el segmento                                     
+	niveles, err := s.segmentoRepo.FindNivelesSostenibilidadBySegmento(ctx, *auto.IDSegmento)
+	if err != nil {
+		return fmt.Errorf("error getting niveles sostenibilidad: %w", err)
+	}
+
+	// Determinar el nivel de sostenibilidad según el puntaje                                 
+	var nivelAsignado *domain.NivelSostenibilidad
+	for _, nivel := range niveles {
+		if puntajeTotal >= nivel.MinPuntaje && puntajeTotal <= nivel.MaxPuntaje {
+			nivelAsignado = nivel
+			break
+		}
+	}
+
+	if nivelAsignado == nil {
+		return fmt.Errorf("no se encontró un nivel de sostenibilidad para el puntaje %d en el segmento %d", puntajeTotal, *auto.IDSegmento)
+	}
+
+	// Marcar como completada con puntaje y nivel de sostenibilidad                           
+	err = s.autoevaluacionRepo.CompleteWithScore(ctx, idAutoevaluacion, puntajeTotal, nivelAsignado.ID)
 	if err != nil {
 		return fmt.Errorf("error completing autoevaluacion: %w", err)
 	}

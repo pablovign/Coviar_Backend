@@ -52,3 +52,29 @@ func (r *SegmentoRepository) FindByID(ctx context.Context, id int) (*domain.Segm
 
 	return seg, nil
 }
+
+func (r *SegmentoRepository) FindNivelesSostenibilidadBySegmento(ctx context.Context, idSegmento int) ([]*domain.NivelSostenibilidad, error) {  // ✅ NUEVO MÉTODO COMPLETO
+	query := `
+		SELECT id_nivel_sostenibilidad, id_segmento, nombre, min_puntaje, max_puntaje 
+		FROM niveles_sostenibilidad 
+		WHERE id_segmento = $1
+		ORDER BY min_puntaje ASC
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, idSegmento)
+	if err != nil {
+		return nil, fmt.Errorf("error querying niveles_sostenibilidad: %w", err)
+	}
+	defer rows.Close()
+
+	var niveles []*domain.NivelSostenibilidad
+	for rows.Next() {
+		nivel := &domain.NivelSostenibilidad{}
+		if err := rows.Scan(&nivel.ID, &nivel.IDSegmento, &nivel.Nombre, &nivel.MinPuntaje, &nivel.MaxPuntaje); err != nil {
+			return nil, fmt.Errorf("error scanning nivel_sostenibilidad: %w", err)
+		}
+		niveles = append(niveles, nivel)
+	}
+
+	return niveles, rows.Err()
+}

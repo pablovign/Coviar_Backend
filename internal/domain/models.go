@@ -225,6 +225,8 @@ type Autoevaluacion struct {
 	Estado      EstadoAutoevaluacion `json:"estado"`
 	IDBodega    int                  `json:"id_bodega"`
 	IDSegmento  *int                 `json:"id_segmento,omitempty"`
+	PuntajeFinal *int 				 `json:"puntaje_final,omitempty"`
+	IDNivelSostenibilidad *int 		 `json:"id_nivel_sostenibilidad,omitempty"`
 }
 
 type Respuesta struct {
