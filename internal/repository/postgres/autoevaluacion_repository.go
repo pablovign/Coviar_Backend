@@ -82,6 +82,7 @@ func (r *AutoevaluacionRepository) Complete(ctx context.Context, id int) error {
 func (r *AutoevaluacionRepository) FindPendienteByBodega(ctx context.Context, idBodega int) (*domain.Autoevaluacion, error) {
 	query := `
 		SELECT id_autoevaluacion, fecha_inicio, fecha_fin, estado, id_bodega, id_segmento
+		FROM autoevaluaciones
 		WHERE id_bodega = $1 AND estado = $2
 	`
 
