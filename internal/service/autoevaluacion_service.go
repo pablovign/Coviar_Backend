@@ -36,7 +36,7 @@ func NewAutoevaluacionService(
 }
 
 // CreateAutoevaluacion crea una nueva autoevaluación para una bodega
-func (s *AutoevaluacionService) CreateAutoevaluacion(ctx context.Context, idBodega int) (*domain.Autoevaluacion, error) {
+/*func (s *AutoevaluacionService) CreateAutoevaluacion(ctx context.Context, idBodega int) (*domain.Autoevaluacion, error) {
 	auto := &domain.Autoevaluacion{
 		IDBodega: idBodega,
 	}
@@ -48,6 +48,56 @@ func (s *AutoevaluacionService) CreateAutoevaluacion(ctx context.Context, idBode
 
 	auto.ID = id
 	return auto, nil
+}*/
+
+// CreateAutoevaluacion crea una nueva autoevaluación para una bodega o retorna la pendiente
+func (s *AutoevaluacionService) CreateAutoevaluacion(ctx context.Context, idBodega int) (*domain.AutoevaluacionPendienteResponse, error) {
+	// Verificar si ya existe una autoevaluación pendiente para esta bodega
+	autoPendiente, err := s.autoevaluacionRepo.FindPendienteByBodega(ctx, idBodega)
+	if err != nil {
+		return nil, fmt.Errorf("error checking for pending autoevaluacion: %w", err)
+	}
+
+	// Si existe una autoevaluación pendiente, retornarla con sus respuestas
+	if autoPendiente != nil {
+		// Obtener las respuestas existentes
+		respuestas, err := s.respuestaRepo.FindByAutoevaluacion(ctx, autoPendiente.ID)
+		if err != nil {
+			return nil, fmt.Errorf("error getting respuestas: %w", err)
+		}
+
+		// Convertir respuestas al formato DTO
+		respuestasDTO := make([]domain.GuardarRespuestaRequest, len(respuestas))
+		for i, resp := range respuestas {
+			respuestasDTO[i] = domain.GuardarRespuestaRequest{
+				IDIndicador:      resp.IDIndicador,
+				IDNivelRespuesta: resp.IDNivelRespuesta,
+			}
+		}
+
+		return &domain.AutoevaluacionPendienteResponse{
+			AutoevaluacionPendiente: autoPendiente,
+			Respuestas:              respuestasDTO,
+			Mensaje:                 "Ya existe una autoevaluación pendiente. Para crear una nueva, primero debe cancelar la actual.",
+		}, nil
+	}
+
+	// No existe autoevaluación pendiente, crear una nueva
+	auto := &domain.Autoevaluacion{
+		IDBodega: idBodega,
+	}
+
+	id, err := s.autoevaluacionRepo.Create(ctx, nil, auto)
+	if err != nil {
+		return nil, fmt.Errorf("error creating autoevaluacion: %w", err)
+	}
+
+	auto.ID = id
+	return &domain.AutoevaluacionPendienteResponse{
+		AutoevaluacionPendiente: auto,
+		Respuestas:              []domain.GuardarRespuestaRequest{},
+		Mensaje:                 "Autoevaluación creada correctamente",
+	}, nil
 }
 
 // GetSegmentos obtiene todos los segmentos disponibles
@@ -222,6 +272,32 @@ func (s *AutoevaluacionService) CompletarAutoevaluacion(ctx context.Context, idA
 	err = s.autoevaluacionRepo.Complete(ctx, idAutoevaluacion)
 	if err != nil {
 		return fmt.Errorf("error completing autoevaluacion: %w", err)
+	}
+
+	return nil
+}
+
+// CancelarAutoevaluacion marca la autoevaluación como cancelada
+func (s *AutoevaluacionService) CancelarAutoevaluacion(ctx context.Context, idAutoevaluacion int) error {
+	// Verificar que la autoevaluación existe
+	auto, err := s.autoevaluacionRepo.FindByID(ctx, idAutoevaluacion)
+	if err != nil {
+		return fmt.Errorf("error finding autoevaluacion: %w", err)
+	}
+
+	if auto == nil {
+		return domain.ErrNotFound
+	}
+
+	// Verificar que esté en estado PENDIENTE
+	if auto.Estado != domain.EstadoPendiente {
+		return fmt.Errorf("solo se pueden cancelar autoevaluaciones en estado PENDIENTE")
+	}
+
+	// Marcar como cancelada
+	err = s.autoevaluacionRepo.Cancel(ctx, idAutoevaluacion)
+	if err != nil {
+		return fmt.Errorf("error canceling autoevaluacion: %w", err)
 	}
 
 	return nil

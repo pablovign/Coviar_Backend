@@ -78,3 +78,35 @@ func (r *AutoevaluacionRepository) Complete(ctx context.Context, id int) error {
 
 	return nil
 }
+
+func (r *AutoevaluacionRepository) FindPendienteByBodega(ctx context.Context, idBodega int) (*domain.Autoevaluacion, error) {
+	query := `
+		SELECT id_autoevaluacion, fecha_inicio, fecha_fin, estado, id_bodega, id_segmento, id_version
+		FROM autoevaluaciones 
+		WHERE id_bodega = $1 AND estado = $2
+	`
+
+	auto := &domain.Autoevaluacion{}
+	err := r.db.QueryRowContext(ctx, query, idBodega, domain.EstadoPendiente).Scan(
+		&auto.ID, &auto.FechaInicio, &auto.FechaFin, &auto.Estado, &auto.IDBodega, &auto.IDSegmento,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // No hay autoevaluación pendiente
+		}
+		return nil, fmt.Errorf("error finding pending autoevaluacion: %w", err)
+	}
+
+	return auto, nil
+}
+
+func (r *AutoevaluacionRepository) Cancel(ctx context.Context, id int) error {
+	query := `UPDATE autoevaluaciones SET estado = $1, fecha_fin = NOW() WHERE id_autoevaluacion = $2`
+
+	_, err := r.db.ExecContext(ctx, query, domain.EstadoCancelada, id)
+	if err != nil {
+		return fmt.Errorf("error canceling autoevaluacion: %w", err)
+	}
+
+	return nil
+}

@@ -83,6 +83,8 @@ type AutoevaluacionRepository interface {
 	FindByID(ctx context.Context, id int) (*domain.Autoevaluacion, error)
 	UpdateSegmento(ctx context.Context, id int, idSegmento int) error
 	Complete(ctx context.Context, id int) error
+	FindPendienteByBodega(ctx context.Context, idBodega int) (*domain.Autoevaluacion, error)
+	Cancel(ctx context.Context, id int) error
 }
 
 type CapituloRepository interface {

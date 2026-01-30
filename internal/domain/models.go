@@ -260,3 +260,9 @@ type GuardarRespuestaRequest struct {
 type GuardarRespuestasRequest struct {
 	Respuestas []GuardarRespuestaRequest `json:"respuestas"`
 }
+
+type AutoevaluacionPendienteResponse struct {
+	AutoevaluacionPendiente *Autoevaluacion           `json:"autoevaluacion_pendiente,omitempty"`
+	Respuestas              []GuardarRespuestaRequest `json:"respuestas,omitempty"`
+	Mensaje                 string                    `json:"mensaje"`
+}
