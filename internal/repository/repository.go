@@ -104,6 +104,7 @@ type NivelRespuestaRepository interface {
 
 type RespuestaRepository interface {
 	Create(ctx context.Context, tx Transaction, respuesta *domain.Respuesta) (int, error)
+	Upsert(ctx context.Context, tx Transaction, respuesta *domain.Respuesta) (int, error)
 	FindByAutoevaluacion(ctx context.Context, idAutoevaluacion int) ([]*domain.Respuesta, error)
 	DeleteByAutoevaluacion(ctx context.Context, idAutoevaluacion int) error
 	CalculateTotalScore(ctx context.Context, idAutoevaluacion int) (int, error)
