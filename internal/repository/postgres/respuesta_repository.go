@@ -34,6 +34,25 @@ func (r *RespuestaRepository) Create(ctx context.Context, tx repository.Transact
 	return id, nil
 }
 
+func (r *RespuestaRepository) Upsert(ctx context.Context, tx repository.Transaction, respuesta *domain.Respuesta) (int, error) {
+	query := `
+		INSERT INTO respuestas (id_nivel_respuesta, id_indicador, id_autoevaluacion)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (id_autoevaluacion, id_indicador) 
+		DO UPDATE SET id_nivel_respuesta = EXCLUDED.id_nivel_respuesta
+		RETURNING id_respuesta
+	`
+
+	var id int
+	err := r.db.QueryRowContext(ctx, query, respuesta.IDNivelRespuesta, respuesta.IDIndicador, respuesta.IDAutoevaluacion).Scan(&id)
+	if err != nil {
+		return 0, fmt.Errorf("error upserting respuesta: %w", err)
+	}
+
+	respuesta.ID = id
+	return id, nil
+}
+
 func (r *RespuestaRepository) FindByAutoevaluacion(ctx context.Context, idAutoevaluacion int) ([]*domain.Respuesta, error) {
 	query := `
 		SELECT id_respuesta, id_nivel_respuesta, id_indicador, id_autoevaluacion
@@ -68,4 +87,21 @@ func (r *RespuestaRepository) DeleteByAutoevaluacion(ctx context.Context, idAuto
 	}
 
 	return nil
+}
+
+func (r *RespuestaRepository) CalculateTotalScore(ctx context.Context, idAutoevaluacion int) (int, error) {
+	query := `
+		SELECT COALESCE(SUM(nr.puntos), 0) as total_puntos
+		FROM respuestas r
+		INNER JOIN niveles_respuesta nr ON r.id_nivel_respuesta = nr.id_nivel_respuesta
+		WHERE r.id_autoevaluacion = $1
+	`
+
+	var totalPuntos int
+	err := r.db.QueryRowContext(ctx, query, idAutoevaluacion).Scan(&totalPuntos)
+	if err != nil {
+		return 0, fmt.Errorf("error calculating total score: %w", err)
+	}
+
+	return totalPuntos, nil
 }

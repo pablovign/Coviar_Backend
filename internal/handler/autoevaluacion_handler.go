@@ -19,7 +19,7 @@ func NewAutoevaluacionHandler(service *service.AutoevaluacionService) *Autoevalu
 }
 
 // CreateAutoevaluacion POST /api/autoevaluaciones
-func (h *AutoevaluacionHandler) CreateAutoevaluacion(w http.ResponseWriter, r *http.Request) {
+/*func (h *AutoevaluacionHandler) CreateAutoevaluacion(w http.ResponseWriter, r *http.Request) {
 	var req domain.CreateAutoevaluacionRequest
 	if err := httputil.DecodeJSON(r, &req); err != nil {
 		httputil.RespondError(w, http.StatusBadRequest, "JSON inválido")
@@ -33,6 +33,29 @@ func (h *AutoevaluacionHandler) CreateAutoevaluacion(w http.ResponseWriter, r *h
 	}
 
 	httputil.RespondJSON(w, http.StatusCreated, auto)
+}*/
+
+// CreateAutoevaluacion POST /api/autoevaluaciones
+func (h *AutoevaluacionHandler) CreateAutoevaluacion(w http.ResponseWriter, r *http.Request) {
+	var req domain.CreateAutoevaluacionRequest
+	if err := httputil.DecodeJSON(r, &req); err != nil {
+		httputil.RespondError(w, http.StatusBadRequest, "JSON inválido")
+		return
+	}
+
+	response, err := h.service.CreateAutoevaluacion(r.Context(), req.IDBodega)
+	if err != nil {
+		httputil.HandleServiceError(w, err)
+		return
+	}
+
+	// Si hay una autoevaluación pendiente, retornar con código 200
+	// Si se creó una nueva, retornar con código 201
+	if response.AutoevaluacionPendiente != nil && response.AutoevaluacionPendiente.Estado == domain.EstadoPendiente && len(response.Respuestas) > 0 {
+		httputil.RespondJSON(w, http.StatusOK, response)
+	} else {
+		httputil.RespondJSON(w, http.StatusCreated, response)
+	}
 }
 
 // GetSegmentos GET /api/autoevaluaciones/{id_autoevaluacion}/segmentos
@@ -125,4 +148,21 @@ func (h *AutoevaluacionHandler) CompletarAutoevaluacion(w http.ResponseWriter, r
 	}
 
 	httputil.RespondJSON(w, http.StatusOK, map[string]string{"mensaje": "Autoevaluación completada correctamente"})
+}
+
+// CancelarAutoevaluacion POST /api/autoevaluaciones/{id_autoevaluacion}/cancelar
+func (h *AutoevaluacionHandler) CancelarAutoevaluacion(w http.ResponseWriter, r *http.Request) {
+	idStr := router.GetParam(r, "id_autoevaluacion")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		httputil.RespondError(w, http.StatusBadRequest, "ID inválido")
+		return
+	}
+
+	if err := h.service.CancelarAutoevaluacion(r.Context(), id); err != nil {
+		httputil.HandleServiceError(w, err)
+		return
+	}
+
+	httputil.RespondJSON(w, http.StatusOK, map[string]string{"mensaje": "Autoevaluación cancelada correctamente"})
 }

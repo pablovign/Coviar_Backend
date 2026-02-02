@@ -145,6 +145,7 @@ func main() {
 	r.GET("/api/autoevaluaciones/{id_autoevaluacion}/estructura", protect(autoevaluacionHandler.GetEstructura))
 	r.POST("/api/autoevaluaciones/{id_autoevaluacion}/respuestas", protect(autoevaluacionHandler.GuardarRespuestas))
 	r.POST("/api/autoevaluaciones/{id_autoevaluacion}/completar", protect(autoevaluacionHandler.CompletarAutoevaluacion))
+	r.POST("/api/autoevaluaciones/{id_autoevaluacion}/cancelar", protect(autoevaluacionHandler.CancelarAutoevaluacion))
 
 	// 7. Iniciar servidor
 	addr := cfg.Server.Host + ":" + cfg.Server.Port

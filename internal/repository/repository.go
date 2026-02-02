@@ -76,6 +76,7 @@ type TransactionManager interface {
 type SegmentoRepository interface {
 	FindAll(ctx context.Context) ([]*domain.Segmento, error)
 	FindByID(ctx context.Context, id int) (*domain.Segmento, error)
+	FindNivelesSostenibilidadBySegmento(ctx context.Context, idSegmento int) ([]*domain.NivelSostenibilidad, error)
 }
 
 type AutoevaluacionRepository interface {
@@ -83,6 +84,9 @@ type AutoevaluacionRepository interface {
 	FindByID(ctx context.Context, id int) (*domain.Autoevaluacion, error)
 	UpdateSegmento(ctx context.Context, id int, idSegmento int) error
 	Complete(ctx context.Context, id int) error
+	FindPendienteByBodega(ctx context.Context, idBodega int) (*domain.Autoevaluacion, error)
+	CompleteWithScore(ctx context.Context, id int, puntajeFinal int, idNivelSostenibilidad int) error
+	Cancel(ctx context.Context, id int) error
 }
 
 type CapituloRepository interface {
@@ -100,6 +104,8 @@ type NivelRespuestaRepository interface {
 
 type RespuestaRepository interface {
 	Create(ctx context.Context, tx Transaction, respuesta *domain.Respuesta) (int, error)
+	Upsert(ctx context.Context, tx Transaction, respuesta *domain.Respuesta) (int, error)
 	FindByAutoevaluacion(ctx context.Context, idAutoevaluacion int) ([]*domain.Respuesta, error)
 	DeleteByAutoevaluacion(ctx context.Context, idAutoevaluacion int) error
+	CalculateTotalScore(ctx context.Context, idAutoevaluacion int) (int, error)
 }
