@@ -298,6 +298,19 @@ func (s *AutoevaluacionService) CompletarAutoevaluacion(ctx context.Context, idA
 		return fmt.Errorf("autoevaluacion must have at least one respuesta")
 	}
 
+	// === VALIDACIÓN ESTRICTA DE COMPLETITUD ===
+	// Obtener los indicadores requeridos para este segmento
+	requiredIndicators, err := s.indicadorRepo.FindBySegmento(ctx, *auto.IDSegmento)
+	if err != nil {
+		return fmt.Errorf("error getting required indicators: %w", err)
+	}
+
+	// Verificar que coincida la cantidad
+	if len(respuestas) != len(requiredIndicators) {
+		return fmt.Errorf("autoevaluacion incomplete: expected %d answers, got %d", len(requiredIndicators), len(respuestas))
+	}
+	// ==========================================
+
 	// Calcular puntaje total
 	puntajeTotal, err := s.respuestaRepo.CalculateTotalScore(ctx, idAutoevaluacion)
 	if err != nil {
