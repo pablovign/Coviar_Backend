@@ -88,6 +88,17 @@ type ResponsableRequest struct {
 	DNI      *string `json:"dni,omitempty"`
 }
 
+type ResponsableUpdateDTO struct {
+	Nombre   string `json:"nombre"`
+	Apellido string `json:"apellido"`
+	Cargo    string `json:"cargo"`
+	DNI      string `json:"dni"`
+}
+
+type EmailUpdateDTO struct {
+	Email string `json:"email"`
+}
+
 // ============================================
 // MODELOS DE USUARIO
 // ============================================
