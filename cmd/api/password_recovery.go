@@ -1,0 +1,254 @@
+package main
+
+import (
+	"crypto/rand"
+	"database/sql"
+	"encoding/hex"
+	"fmt"
+	"log"
+	"net/http"
+	"net/smtp"
+	"os"
+	"time"
+
+	"coviar_backend/pkg/httputil"
+
+	"golang.org/x/crypto/bcrypt"
+)
+
+type passwordResetResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+type passwordResetRequest struct {
+	Email string `json:"email"`
+}
+
+type resetPasswordRequest struct {
+	Token       string `json:"token"`
+	NewPassword string `json:"newPassword"`
+}
+
+func generateResetToken() (string, error) {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
+}
+
+func sendResetEmail(email, token string) error {
+	smtpHost := getEnvDefault("SMTP_HOST", "smtp.gmail.com")
+	smtpUser := os.Getenv("SMTP_USER")
+	smtpPass := os.Getenv("SMTP_PASSWORD")
+	smtpPort := getEnvDefault("SMTP_PORT", "587")
+	frontendURL := getEnvDefault("FRONTEND_URL", "http://localhost:3000")
+
+	if smtpUser == "" || smtpPass == "" {
+		return fmt.Errorf("configuración SMTP incompleta: SMTP_USER y SMTP_PASSWORD son requeridos")
+	}
+
+	resetURL := fmt.Sprintf("%s/actualizar-contrasena?token=%s", frontendURL, token)
+
+	subject := "Subject: Recuperación de Contraseña\r\n"
+	mime := "MIME-version: 1.0;\r\nContent-Type: text/html; charset=\"UTF-8\";\r\n\r\n"
+
+	body := fmt.Sprintf(`
+		<!DOCTYPE html>
+		<html>
+		<head>
+			<style>
+				body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+				.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+				.button {
+					display: inline-block;
+					padding: 12px 24px;
+					background-color: #4F46E5;
+					color: white;
+					text-decoration: none;
+					border-radius: 6px;
+					margin: 20px 0;
+				}
+				.footer { margin-top: 30px; font-size: 12px; color: #666; }
+			</style>
+		</head>
+		<body>
+			<div class="container">
+				<h2>Recuperación de Contraseña</h2>
+				<p>Has solicitado restablecer tu contraseña.</p>
+				<p>Haz clic en el siguiente botón para continuar:</p>
+				<a href="%s" class="button">Restablecer Contraseña</a>
+				<p>O copia y pega este enlace en tu navegador:</p>
+				<p style="word-break: break-all;">%s</p>
+				<p><strong>Este enlace expirará en 1 hora.</strong></p>
+				<div class="footer">
+					<p>Si no solicitaste este cambio, ignora este correo.</p>
+				</div>
+			</div>
+		</body>
+		</html>
+	`, resetURL, resetURL)
+
+	message := []byte(subject + mime + body)
+	auth := smtp.PlainAuth("", smtpUser, smtpPass, smtpHost)
+	addr := fmt.Sprintf("%s:%s", smtpHost, smtpPort)
+
+	if err := smtp.SendMail(addr, auth, smtpUser, []string{email}, message); err != nil {
+		return fmt.Errorf("error enviando email: %v", err)
+	}
+
+	log.Printf("✅ Email de recuperación enviado a %s", email)
+	return nil
+}
+
+// RequestPasswordReset maneja POST /api/request-password-reset
+func RequestPasswordReset(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req passwordResetRequest
+		if err := httputil.DecodeJSON(r, &req); err != nil {
+			log.Printf("Error decodificando request: %v", err)
+			httputil.RespondJSON(w, http.StatusBadRequest, passwordResetResponse{false, "Datos inválidos"})
+			return
+		}
+
+		log.Printf("Solicitud de recuperación para email: %s", req.Email)
+
+		// Buscar usuario por email en tabla 'cuentas'
+		var userID int
+		err := db.QueryRow("SELECT id_cuenta FROM cuentas WHERE email_login = $1", req.Email).Scan(&userID)
+		if err != nil {
+			// Por seguridad, siempre respondemos lo mismo aunque no exista el email
+			httputil.RespondJSON(w, http.StatusOK, passwordResetResponse{true, "Si el email existe, recibirás un correo de recuperación"})
+			return
+		}
+
+		// Limpiar tokens antiguos del usuario
+		if _, err = db.Exec("DELETE FROM restaurar_contrasenas WHERE user_id = $1", userID); err != nil {
+			log.Printf("Error al limpiar tokens antiguos: %v", err)
+		}
+
+		// Generar token
+		token, err := generateResetToken()
+		if err != nil {
+			log.Printf("Error generando token: %v", err)
+			httputil.RespondJSON(w, http.StatusInternalServerError, passwordResetResponse{false, "Error al generar token"})
+			return
+		}
+
+		expiresAt := time.Now().UTC().Add(1 * time.Hour)
+
+		// Guardar token en BD
+		_, err = db.Exec(
+			"INSERT INTO restaurar_contrasenas (user_id, token, expires_at, used) VALUES ($1, $2, $3, $4)",
+			userID, token, expiresAt, false,
+		)
+		if err != nil {
+			log.Printf("Error al guardar token: %v", err)
+			httputil.RespondJSON(w, http.StatusInternalServerError, passwordResetResponse{false, "Error al procesar solicitud"})
+			return
+		}
+
+		// Enviar email
+		if err := sendResetEmail(req.Email, token); err != nil {
+			log.Printf("Error enviando email: %v", err)
+			httputil.RespondJSON(w, http.StatusInternalServerError, passwordResetResponse{false, "Error al enviar email"})
+			return
+		}
+
+		httputil.RespondJSON(w, http.StatusOK, passwordResetResponse{true, "Si el email existe, recibirás un correo de recuperación"})
+	}
+}
+
+// ResetPassword maneja POST /api/reset-password
+func ResetPassword(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req resetPasswordRequest
+		if err := httputil.DecodeJSON(r, &req); err != nil {
+			log.Printf("Error decodificando request: %v", err)
+			httputil.RespondJSON(w, http.StatusBadRequest, passwordResetResponse{false, "Datos inválidos"})
+			return
+		}
+
+		if len(req.NewPassword) < 6 {
+			httputil.RespondJSON(w, http.StatusBadRequest, passwordResetResponse{false, "La contraseña debe tener al menos 6 caracteres"})
+			return
+		}
+
+		var userID int
+		var expiresAt time.Time
+		var used bool
+
+		// Verificar token
+		err := db.QueryRow(
+			"SELECT user_id, expires_at, used FROM restaurar_contrasenas WHERE token = $1",
+			req.Token,
+		).Scan(&userID, &expiresAt, &used)
+
+		if err == sql.ErrNoRows {
+			httputil.RespondJSON(w, http.StatusBadRequest, passwordResetResponse{false, "Token inválido"})
+			return
+		}
+		if err != nil {
+			log.Printf("Error al verificar token: %v", err)
+			httputil.RespondJSON(w, http.StatusInternalServerError, passwordResetResponse{false, "Error al verificar token"})
+			return
+		}
+
+		if used {
+			httputil.RespondJSON(w, http.StatusBadRequest, passwordResetResponse{false, "Este token ya fue utilizado"})
+			return
+		}
+
+		if time.Now().UTC().After(expiresAt) {
+			httputil.RespondJSON(w, http.StatusBadRequest, passwordResetResponse{false, "El token ha expirado"})
+			return
+		}
+
+		// Hashear nueva contraseña
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+		if err != nil {
+			log.Printf("Error hasheando contraseña: %v", err)
+			httputil.RespondJSON(w, http.StatusInternalServerError, passwordResetResponse{false, "Error al procesar contraseña"})
+			return
+		}
+
+		// Actualizar contraseña en tabla 'cuentas'
+		if _, err = db.Exec("UPDATE cuentas SET password_hash = $1 WHERE id_cuenta = $2", string(hashedPassword), userID); err != nil {
+			log.Printf("Error al actualizar contraseña: %v", err)
+			httputil.RespondJSON(w, http.StatusInternalServerError, passwordResetResponse{false, "Error al actualizar contraseña"})
+			return
+		}
+
+		// Marcar token como usado
+		if _, err = db.Exec("UPDATE restaurar_contrasenas SET used = TRUE WHERE token = $1", req.Token); err != nil {
+			log.Printf("Error al marcar token como usado: %v", err)
+		}
+
+		httputil.RespondJSON(w, http.StatusOK, passwordResetResponse{true, "Contraseña actualizada exitosamente"})
+	}
+}
+
+// cleanExpiredTokens se ejecuta en background y elimina tokens expirados o ya usados cada hora
+func cleanExpiredTokens(db *sql.DB) {
+	ticker := time.NewTicker(1 * time.Hour)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		result, err := db.Exec("DELETE FROM restaurar_contrasenas WHERE expires_at < NOW() OR used = TRUE")
+		if err != nil {
+			log.Printf("Error limpiando tokens expirados: %v", err)
+			continue
+		}
+		if rows, _ := result.RowsAffected(); rows > 0 {
+			log.Printf("Tokens expirados eliminados: %d", rows)
+		}
+	}
+}
+
+func getEnvDefault(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
+}
