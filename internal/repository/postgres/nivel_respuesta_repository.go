@@ -22,7 +22,7 @@ func (r *NivelRespuestaRepository) FindByIndicador(ctx context.Context, idIndica
 		SELECT id_nivel_respuesta, id_indicador, nombre, descripcion, puntos
 		FROM niveles_respuesta
 		WHERE id_indicador = $1
-		ORDER BY puntos
+		ORDER BY orden
 	`
 
 	rows, err := r.db.QueryContext(ctx, query, idIndicador)
