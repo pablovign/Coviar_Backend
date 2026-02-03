@@ -35,6 +35,45 @@ func (s *ResponsableService) GetByCuentaID(ctx context.Context, cuentaID int) ([
 	return s.responsableRepo.FindByCuentaID(ctx, cuentaID)
 }
 
+func (s *ResponsableService) Create(ctx context.Context, cuentaID int, dto *domain.ResponsableUpdateDTO) (*domain.Responsable, error) {
+	// Validar campos
+	if err := validator.ValidateNotEmpty(dto.Nombre, "nombre"); err != nil {
+		return nil, domain.ErrValidation
+	}
+	if err := validator.ValidateNotEmpty(dto.Apellido, "apellido"); err != nil {
+		return nil, domain.ErrValidation
+	}
+	if err := validator.ValidateNotEmpty(dto.Cargo, "cargo"); err != nil {
+		return nil, domain.ErrValidation
+	}
+	if err := validator.ValidateDNI(dto.DNI); err != nil {
+		return nil, domain.ErrValidation
+	}
+
+	// Verificar que la cuenta existe
+	_, err := s.cuentaRepo.FindByID(ctx, cuentaID)
+	if err != nil {
+		return nil, err
+	}
+
+	responsable := &domain.Responsable{
+		IDCuenta: cuentaID,
+		Nombre:   dto.Nombre,
+		Apellido: dto.Apellido,
+		Cargo:    dto.Cargo,
+		DNI:      dto.DNI,
+		Activo:   true,
+	}
+
+	id, err := s.responsableRepo.Create(ctx, nil, responsable)
+	if err != nil {
+		return nil, err
+	}
+
+	responsable.ID = id
+	return responsable, nil
+}
+
 func (s *ResponsableService) Update(ctx context.Context, id int, dto *domain.ResponsableUpdateDTO) error {
 	if err := validator.ValidateNotEmpty(dto.Nombre, "nombre"); err != nil {
 		return domain.ErrValidation

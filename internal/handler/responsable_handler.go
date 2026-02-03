@@ -115,3 +115,63 @@ func (h *ResponsableHandler) DarDeBaja(w http.ResponseWriter, r *http.Request) {
 
 	httputil.RespondJSON(w, http.StatusOK, map[string]string{"mensaje": "Responsable dado de baja exitosamente"})
 }
+
+func (h *ResponsableHandler) GetByCuentaID(w http.ResponseWriter, r *http.Request) {
+	cuentaIDStr := router.GetParam(r, "cuenta_id")
+	cuentaID, err := strconv.Atoi(cuentaIDStr)
+	if err != nil {
+		httputil.RespondError(w, http.StatusBadRequest, "ID de cuenta inválido")
+		return
+	}
+
+	// Verificar que el usuario autenticado solo acceda a sus propios responsables
+	userID := r.Context().Value(middleware.UserIDKey).(int)
+	userTipo := r.Context().Value(middleware.UserTipoKey).(string)
+
+	// Solo puede acceder si es admin o es la misma cuenta
+	if userTipo != string(domain.TipoCuentaAdministradorApp) && userID != cuentaID {
+		httputil.RespondError(w, http.StatusForbidden, "no tiene permisos para acceder a este recurso")
+		return
+	}
+
+	responsables, err := h.service.GetByCuentaID(r.Context(), cuentaID)
+	if err != nil {
+		httputil.HandleServiceError(w, err)
+		return
+	}
+
+	httputil.RespondJSON(w, http.StatusOK, responsables)
+}
+
+func (h *ResponsableHandler) Create(w http.ResponseWriter, r *http.Request) {
+	cuentaIDStr := router.GetParam(r, "cuenta_id")
+	cuentaID, err := strconv.Atoi(cuentaIDStr)
+	if err != nil {
+		httputil.RespondError(w, http.StatusBadRequest, "ID de cuenta inválido")
+		return
+	}
+
+	// Verificar que el usuario autenticado solo pueda crear responsables para su cuenta
+	userID := r.Context().Value(middleware.UserIDKey).(int)
+	userTipo := r.Context().Value(middleware.UserTipoKey).(string)
+
+	// Solo puede crear si es admin o es la misma cuenta
+	if userTipo != string(domain.TipoCuentaAdministradorApp) && userID != cuentaID {
+		httputil.RespondError(w, http.StatusForbidden, "no tiene permisos para crear responsables en esta cuenta")
+		return
+	}
+
+	var req domain.ResponsableUpdateDTO
+	if err := httputil.DecodeJSON(r, &req); err != nil {
+		httputil.RespondError(w, http.StatusBadRequest, "JSON inválido")
+		return
+	}
+
+	responsable, err := h.service.Create(r.Context(), cuentaID, &req)
+	if err != nil {
+		httputil.HandleServiceError(w, err)
+		return
+	}
+
+	httputil.RespondJSON(w, http.StatusCreated, responsable)
+}
