@@ -115,6 +115,7 @@ func main() {
 	r.GET("/api/localidades", ubicacionHandler.GetLocalidades)
 
 	// Recuperación de contraseña (públicas)
+	r.POST("/api/recuperar-password", RequestPasswordReset(db.DB))
 	r.POST("/api/restablecer-password", ResetPassword(db.DB))
 
 	// Iniciar limpieza de tokens expirados en background
