@@ -19,10 +19,10 @@ func NewNivelRespuestaRepository(db *sql.DB) repository.NivelRespuestaRepository
 
 func (r *NivelRespuestaRepository) FindByIndicador(ctx context.Context, idIndicador int) ([]*domain.NivelRespuesta, error) {
 	query := `
-		SELECT id_nivel_respuesta, id_indicador, nombre, descripcion, puntos
+		SELECT id_nivel_respuesta, id_indicador, nombre, descripcion, puntos, COALESCE(posicion, 0) as posicion
 		FROM niveles_respuesta
 		WHERE id_indicador = $1
-		ORDER BY orden
+		ORDER BY posicion ASC
 	`
 
 	rows, err := r.db.QueryContext(ctx, query, idIndicador)
@@ -34,7 +34,7 @@ func (r *NivelRespuestaRepository) FindByIndicador(ctx context.Context, idIndica
 	var niveles []*domain.NivelRespuesta
 	for rows.Next() {
 		nivel := &domain.NivelRespuesta{}
-		if err := rows.Scan(&nivel.ID, &nivel.IDIndicador, &nivel.Nombre, &nivel.Descripcion, &nivel.Puntos); err != nil {
+		if err := rows.Scan(&nivel.ID, &nivel.IDIndicador, &nivel.Nombre, &nivel.Descripcion, &nivel.Puntos, &nivel.Posicion); err != nil {
 			return nil, fmt.Errorf("error scanning nivel_respuesta: %w", err)
 		}
 		niveles = append(niveles, nivel)
