@@ -62,6 +62,14 @@ func HandleServiceError(w http.ResponseWriter, err error) {
 		RespondError(w, http.StatusConflict, err.Error())
 	case errors.Is(err, domain.ErrNoAutorizado):
 		RespondError(w, http.StatusUnauthorized, err.Error())
+	case errors.Is(err, domain.ErrAutoevaluacionesPendientes):
+		RespondError(w, http.StatusConflict, err.Error())
+	case errors.Is(err, domain.ErrResponsableYaDadoDeBaja):
+		RespondError(w, http.StatusConflict, err.Error())
+	case errors.Is(err, domain.ErrValidation):
+		RespondError(w, http.StatusBadRequest, "error de validación")
+	case errors.Is(err, domain.ErrInvalidCredentials):
+		RespondError(w, http.StatusUnauthorized, err.Error())
 	default:
 		RespondError(w, http.StatusInternalServerError, "error interno del servidor")
 	}

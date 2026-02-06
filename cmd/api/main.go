@@ -50,6 +50,7 @@ func main() {
 	ubicacionService := service.NewUbicacionService(ubicacionRepo)
 	cuentaService := service.NewCuentaService(cuentaRepo, bodegaRepo)
 	bodegaService := service.NewBodegaService(bodegaRepo)
+	responsableService := service.NewResponsableService(responsableRepo, cuentaRepo, autoevaluacionRepo)
 	autoevaluacionService := service.NewAutoevaluacionService(autoevaluacionRepo, segmentoRepo, capituloRepo, indicadorRepo, nivelRespuestaRepo, respuestaRepo)
 
 	log.Println("✓ Servicios inicializados")
@@ -59,6 +60,7 @@ func main() {
 	ubicacionHandler := handler.NewUbicacionHandler(ubicacionService)
 	cuentaHandler := handler.NewCuentaHandler(cuentaService, cfg.JWT.Secret)
 	bodegaHandler := handler.NewBodegaHandler(bodegaService)
+	responsableHandler := handler.NewResponsableHandler(responsableService)
 	autoevaluacionHandler := handler.NewAutoevaluacionHandler(autoevaluacionService)
 
 	log.Println("✓ Handlers inicializados")
@@ -112,6 +114,13 @@ func main() {
 	r.GET("/api/departamentos", ubicacionHandler.GetDepartamentos)
 	r.GET("/api/localidades", ubicacionHandler.GetLocalidades)
 
+	// Recuperación de contraseña (públicas)
+	r.POST("/api/recuperar-password", RequestPasswordReset(db.DB))
+	r.POST("/api/restablecer-password", ResetPassword(db.DB))
+
+	// Iniciar limpieza de tokens expirados en background
+	go cleanExpiredTokens(db.DB)
+
 	// Health check
 	r.GET("/health", func(w http.ResponseWriter, r *http.Request) {
 		httputil.RespondJSON(w, http.StatusOK, map[string]string{
@@ -137,6 +146,13 @@ func main() {
 	// Bodegas (protegidas)
 	r.GET("/api/bodegas/{id}", protect(bodegaHandler.GetByID))
 	r.PUT("/api/bodegas/{id}", protect(bodegaHandler.Update))
+
+	// Responsables (protegidas)
+	r.GET("/api/responsables/{id}", protect(responsableHandler.GetByID))
+	r.PUT("/api/responsables/{id}", protect(responsableHandler.Update))
+	r.POST("/api/responsables/{id}/baja", protect(responsableHandler.DarDeBaja))
+	r.GET("/api/cuentas/{cuenta_id}/responsables", protect(responsableHandler.GetByCuentaID))
+	r.POST("/api/cuentas/{cuenta_id}/responsables", protect(responsableHandler.Create))
 
 	// Autoevaluaciones (protegidas)
 	r.POST("/api/autoevaluaciones", protect(autoevaluacionHandler.CreateAutoevaluacion))

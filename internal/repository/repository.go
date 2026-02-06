@@ -87,6 +87,7 @@ type AutoevaluacionRepository interface {
 	FindPendienteByBodega(ctx context.Context, idBodega int) (*domain.Autoevaluacion, error)
 	CompleteWithScore(ctx context.Context, id int, puntajeFinal int, idNivelSostenibilidad int) error
 	Cancel(ctx context.Context, id int) error
+	HasPendingByBodega(ctx context.Context, idBodega int) (bool, error)
 }
 
 type CapituloRepository interface {

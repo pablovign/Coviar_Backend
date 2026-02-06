@@ -88,6 +88,17 @@ type ResponsableRequest struct {
 	DNI      *string `json:"dni,omitempty"`
 }
 
+type ResponsableUpdateDTO struct {
+	Nombre   string `json:"nombre"`
+	Apellido string `json:"apellido"`
+	Cargo    string `json:"cargo"`
+	DNI      string `json:"dni"`
+}
+
+type EmailUpdateDTO struct {
+	Email string `json:"email"`
+}
+
 // ============================================
 // MODELOS DE USUARIO
 // ============================================
@@ -216,17 +227,18 @@ type NivelRespuesta struct {
 	Nombre      string `json:"nombre"`
 	Descripcion string `json:"descripcion"`
 	Puntos      int    `json:"puntos"`
+	Posicion    int    `json:"posicion"`
 }
 
 type Autoevaluacion struct {
-	ID          int                  `json:"id_autoevaluacion"`
-	FechaInicio time.Time            `json:"fecha_inicio"`
-	FechaFin    *time.Time           `json:"fecha_fin,omitempty"`
-	Estado      EstadoAutoevaluacion `json:"estado"`
-	IDBodega    int                  `json:"id_bodega"`
-	IDSegmento  *int                 `json:"id_segmento,omitempty"`
-	PuntajeFinal *int 				 `json:"puntaje_final,omitempty"`
-	IDNivelSostenibilidad *int 		 `json:"id_nivel_sostenibilidad,omitempty"`
+	ID                    int                  `json:"id_autoevaluacion"`
+	FechaInicio           time.Time            `json:"fecha_inicio"`
+	FechaFin              *time.Time           `json:"fecha_fin,omitempty"`
+	Estado                EstadoAutoevaluacion `json:"estado"`
+	IDBodega              int                  `json:"id_bodega"`
+	IDSegmento            *int                 `json:"id_segmento,omitempty"`
+	PuntajeFinal          *int                 `json:"puntaje_final,omitempty"`
+	IDNivelSostenibilidad *int                 `json:"id_nivel_sostenibilidad,omitempty"`
 }
 
 type Respuesta struct {

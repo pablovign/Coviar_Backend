@@ -26,6 +26,7 @@ var (
 	dniRegex      = regexp.MustCompile(`^[0-9]{7,8}$`)
 	telefonoRegex = regexp.MustCompile(`^[0-9]+$`)
 	emailRegex    = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+	invCodeRegex  = regexp.MustCompile(`^[a-zA-Z][0-9]{5}$`)
 )
 
 func ValidateCUIT(cuit string) error {
@@ -77,5 +78,21 @@ func ValidatePassword(password string) error {
 	if len(password) < 6 {
 		return fmt.Errorf("la contraseña debe tener al menos 6 caracteres")
 	}
+	return nil
+}
+
+func ValidateInvCode(code *string, fieldName string) error {
+	if code == nil || *code == "" {
+		return nil
+	}
+
+	if len(*code) != 6 {
+		return fmt.Errorf("%s debe tener exactamente 6 caracteres", fieldName)
+	}
+
+	if !invCodeRegex.MatchString(*code) {
+		return fmt.Errorf("%s debe comenzar con una letra seguida de 5 dígitos", fieldName)
+	}
+
 	return nil
 }

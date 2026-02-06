@@ -192,3 +192,15 @@ func (r *AutoevaluacionRepository) Cancel(ctx context.Context, id int) error {
 
 	return nil
 }
+
+func (r *AutoevaluacionRepository) HasPendingByBodega(ctx context.Context, idBodega int) (bool, error) {
+	query := `SELECT EXISTS(SELECT 1 FROM autoevaluaciones WHERE id_bodega = $1 AND estado = $2)`
+
+	var exists bool
+	err := r.db.QueryRowContext(ctx, query, idBodega, domain.EstadoPendiente).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("error checking pending autoevaluacion: %w", err)
+	}
+
+	return exists, nil
+}

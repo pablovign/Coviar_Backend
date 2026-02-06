@@ -323,6 +323,16 @@ func (s *AutoevaluacionService) CompletarAutoevaluacion(ctx context.Context, idA
 		return fmt.Errorf("error getting niveles sostenibilidad: %w", err)
 	}
 
+	// Si no hay niveles configurados, completar sin asignar nivel
+	if len(niveles) == 0 {
+		// Marcar como completada solo con puntaje (sin nivel de sostenibilidad)
+		err = s.autoevaluacionRepo.CompleteWithScore(ctx, idAutoevaluacion, puntajeTotal, 0)
+		if err != nil {
+			return fmt.Errorf("error completing autoevaluacion: %w", err)
+		}
+		return nil
+	}
+
 	// Determinar el nivel de sostenibilidad según el puntaje
 	var nivelAsignado *domain.NivelSostenibilidad
 	for _, nivel := range niveles {
@@ -332,12 +342,27 @@ func (s *AutoevaluacionService) CompletarAutoevaluacion(ctx context.Context, idA
 		}
 	}
 
+	// Si no encontró nivel exacto, asignar el más cercano
 	if nivelAsignado == nil {
-		return fmt.Errorf("no se encontró un nivel de sostenibilidad para el puntaje %d en el segmento %d", puntajeTotal, *auto.IDSegmento)
+		// Buscar el nivel más alto si el puntaje supera todos los rangos
+		for _, nivel := range niveles {
+			if puntajeTotal >= nivel.MinPuntaje {
+				nivelAsignado = nivel
+			}
+		}
+		// Si aún no hay nivel, usar el primero (puntaje menor al mínimo)
+		if nivelAsignado == nil && len(niveles) > 0 {
+			nivelAsignado = niveles[0]
+		}
+	}
+
+	var idNivelSostenibilidad int
+	if nivelAsignado != nil {
+		idNivelSostenibilidad = nivelAsignado.ID
 	}
 
 	// Marcar como completada con puntaje y nivel de sostenibilidad
-	err = s.autoevaluacionRepo.CompleteWithScore(ctx, idAutoevaluacion, puntajeTotal, nivelAsignado.ID)
+	err = s.autoevaluacionRepo.CompleteWithScore(ctx, idAutoevaluacion, puntajeTotal, idNivelSostenibilidad)
 	if err != nil {
 		return fmt.Errorf("error completing autoevaluacion: %w", err)
 	}
