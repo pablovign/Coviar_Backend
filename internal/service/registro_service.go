@@ -141,6 +141,12 @@ func (s *RegistroService) validarRegistro(req *domain.RegistroRequest) error {
 	if err := validator.ValidateEmail(req.Bodega.EmailInstitucional); err != nil {
 		errs = append(errs, validator.ValidationError{Field: "bodega.email_institucional", Message: err.Error()})
 	}
+	if err := validator.ValidateInvCode(req.Bodega.InvBod, "inv_bod"); err != nil {
+		errs = append(errs, validator.ValidationError{Field: "bodega.inv_bod", Message: err.Error()})
+	}
+	if err := validator.ValidateInvCode(req.Bodega.InvVin, "inv_vin"); err != nil {
+		errs = append(errs, validator.ValidationError{Field: "bodega.inv_vin", Message: err.Error()})
+	}
 
 	// Validar cuenta
 	if err := validator.ValidateEmail(req.Cuenta.EmailLogin); err != nil {
