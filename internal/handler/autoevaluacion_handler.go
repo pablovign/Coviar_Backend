@@ -5,17 +5,21 @@ import (
 	"strconv"
 
 	"coviar_backend/internal/domain"
+	"coviar_backend/internal/repository"
 	"coviar_backend/internal/service"
 	"coviar_backend/pkg/httputil"
 	"coviar_backend/pkg/router"
 )
 
 type AutoevaluacionHandler struct {
-	service *service.AutoevaluacionService
+	service    *service.AutoevaluacionService
+	bodegaRepo repository.BodegaRepository
 }
 
-func NewAutoevaluacionHandler(service *service.AutoevaluacionService) *AutoevaluacionHandler {
-	return &AutoevaluacionHandler{service: service}
+func NewAutoevaluacionHandler(service *service.AutoevaluacionService, bodegaRepo repository.BodegaRepository) *AutoevaluacionHandler {
+	return &AutoevaluacionHandler{
+		service:    service,
+		bodegaRepo: bodegaRepo}
 }
 
 // CreateAutoevaluacion POST /api/autoevaluaciones
@@ -165,4 +169,22 @@ func (h *AutoevaluacionHandler) CancelarAutoevaluacion(w http.ResponseWriter, r 
 	}
 
 	httputil.RespondJSON(w, http.StatusOK, map[string]string{"mensaje": "Autoevaluación cancelada correctamente"})
+}
+
+// GetResultadosUltimaAutoevaluacion GET /api/bodegas/{id_bodega}/resultados-autoevaluacion
+func (h *AutoevaluacionHandler) GetResultadosUltimaAutoevaluacion(w http.ResponseWriter, r *http.Request) {
+	idStr := router.GetParam(r, "id_bodega")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		httputil.RespondError(w, http.StatusBadRequest, "ID inválido")
+		return
+	}
+
+	resultados, err := h.service.GetResultadosUltimaAutoevaluacion(r.Context(), id, h.bodegaRepo)
+	if err != nil {
+		httputil.HandleServiceError(w, err)
+		return
+	}
+
+	httputil.RespondJSON(w, http.StatusOK, resultados)
 }
