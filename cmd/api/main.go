@@ -61,7 +61,7 @@ func main() {
 	cuentaHandler := handler.NewCuentaHandler(cuentaService, cfg.JWT.Secret)
 	bodegaHandler := handler.NewBodegaHandler(bodegaService)
 	responsableHandler := handler.NewResponsableHandler(responsableService)
-	autoevaluacionHandler := handler.NewAutoevaluacionHandler(autoevaluacionService)
+	autoevaluacionHandler := handler.NewAutoevaluacionHandler(autoevaluacionService, bodegaRepo)
 
 	log.Println("✓ Handlers inicializados")
 
@@ -162,6 +162,7 @@ func main() {
 	r.POST("/api/autoevaluaciones/{id_autoevaluacion}/respuestas", protect(autoevaluacionHandler.GuardarRespuestas))
 	r.POST("/api/autoevaluaciones/{id_autoevaluacion}/completar", protect(autoevaluacionHandler.CompletarAutoevaluacion))
 	r.POST("/api/autoevaluaciones/{id_autoevaluacion}/cancelar", protect(autoevaluacionHandler.CancelarAutoevaluacion))
+	r.GET("/api/bodegas/{id_bodega}/resultados-autoevaluacion", protect(autoevaluacionHandler.GetResultadosUltimaAutoevaluacion))
 
 	// 7. Iniciar servidor
 	addr := cfg.Server.Host + ":" + cfg.Server.Port

@@ -280,3 +280,51 @@ type AutoevaluacionPendienteResponse struct {
 	Respuestas              []GuardarRespuestaRequest `json:"respuestas,omitempty"`
 	Mensaje                 string                    `json:"mensaje"`
 }
+
+// ============================================
+// DTOs PARA RESULTADOS DE AUTOEVALUACIÓN
+// ============================================
+
+type ResultadoAutoevaluacionResponse struct {
+	Bodega               ResultadoBodega               `json:"bodega"`
+	Autoevaluacion       ResultadoAutoevaluacion       `json:"autoevaluacion"`
+	Segmento             ResultadoSegmento             `json:"segmento"`
+	NivelSustentabilidad ResultadoNivelSustentabilidad `json:"nivel_sustentabilidad"`
+	Capitulos            []ResultadoCapitulo           `json:"capitulos"`
+}
+
+type ResultadoBodega struct {
+	NombreFantasia string `json:"nombre_fantasia"`
+}
+
+type ResultadoAutoevaluacion struct {
+	FechaFin     time.Time `json:"fecha_fin"`
+	PuntajeFinal int       `json:"puntaje_final"`
+}
+
+type ResultadoSegmento struct {
+	Nombre string `json:"nombre"`
+}
+
+type ResultadoNivelSustentabilidad struct {
+	Nombre string `json:"nombre"`
+}
+
+type ResultadoCapitulo struct {
+	Nombre      string               `json:"nombre"`
+	Orden       int                  `json:"orden"`
+	Indicadores []ResultadoIndicador `json:"indicadores"`
+}
+
+type ResultadoIndicador struct {
+	Nombre           string                    `json:"nombre"`
+	Descripcion      string                    `json:"descripcion"`
+	Orden            int                       `json:"orden"`
+	NivelesRespuesta []ResultadoNivelRespuesta `json:"niveles_respuesta"`
+}
+
+type ResultadoNivelRespuesta struct {
+	Nombre      string `json:"nombre"`
+	Descripcion string `json:"descripcion"`
+	Puntos      int    `json:"puntos"`
+}

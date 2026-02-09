@@ -88,6 +88,7 @@ type AutoevaluacionRepository interface {
 	CompleteWithScore(ctx context.Context, id int, puntajeFinal int, idNivelSostenibilidad int) error
 	Cancel(ctx context.Context, id int) error
 	HasPendingByBodega(ctx context.Context, idBodega int) (bool, error)
+	FindUltimaCompletadaByBodega(ctx context.Context, idBodega int) (*domain.Autoevaluacion, error)
 }
 
 type CapituloRepository interface {

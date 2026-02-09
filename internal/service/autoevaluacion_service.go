@@ -395,3 +395,175 @@ func (s *AutoevaluacionService) CancelarAutoevaluacion(ctx context.Context, idAu
 
 	return nil
 }
+
+// GetResultadosUltimaAutoevaluacion obtiene los resultados de la última autoevaluación completada
+func (s *AutoevaluacionService) GetResultadosUltimaAutoevaluacion(ctx context.Context, idBodega int, bodegaRepo repository.BodegaRepository) (*domain.ResultadoAutoevaluacionResponse, error) {
+	// Obtener la bodega
+	bodega, err := bodegaRepo.FindByID(ctx, idBodega)
+	if err != nil {
+		return nil, fmt.Errorf("error finding bodega: %w", err)
+	}
+	if bodega == nil {
+		return nil, domain.ErrNotFound
+	}
+
+	// Obtener la última autoevaluación completada
+	auto, err := s.autoevaluacionRepo.FindUltimaCompletadaByBodega(ctx, idBodega)
+	if err != nil {
+		return nil, fmt.Errorf("error finding completed autoevaluacion: %w", err)
+	}
+	if auto == nil {
+		return nil, domain.ErrNotFound
+	}
+
+	// Verificar que tenga segmento
+	if auto.IDSegmento == nil {
+		return nil, fmt.Errorf("autoevaluacion does not have segmento")
+	}
+
+	// Verificar que tenga puntaje final
+	if auto.PuntajeFinal == nil {
+		return nil, fmt.Errorf("autoevaluacion does not have puntaje_final")
+	}
+
+	// Verificar que tenga nivel de sostenibilidad
+	if auto.IDNivelSostenibilidad == nil {
+		return nil, fmt.Errorf("autoevaluacion does not have nivel_sostenibilidad")
+	}
+
+	// Verificar que tenga fecha_fin
+	if auto.FechaFin == nil {
+		return nil, fmt.Errorf("autoevaluacion does not have fecha_fin")
+	}
+
+	// Obtener el segmento
+	segmento, err := s.segmentoRepo.FindByID(ctx, *auto.IDSegmento)
+	if err != nil {
+		return nil, fmt.Errorf("error finding segmento: %w", err)
+	}
+
+	// Obtener niveles de sostenibilidad para encontrar el nombre
+	niveles, err := s.segmentoRepo.FindNivelesSostenibilidadBySegmento(ctx, *auto.IDSegmento)
+	if err != nil {
+		return nil, fmt.Errorf("error finding niveles sostenibilidad: %w", err)
+	}
+
+	var nombreNivelSustentabilidad string
+	for _, nivel := range niveles {
+		if nivel.ID == *auto.IDNivelSostenibilidad {
+			nombreNivelSustentabilidad = nivel.Nombre
+			break
+		}
+	}
+
+	// Obtener indicadores habilitados para este segmento
+	habilitadosIds, err := s.indicadorRepo.FindBySegmento(ctx, *auto.IDSegmento)
+	if err != nil {
+		return nil, fmt.Errorf("error getting enabled indicators: %w", err)
+	}
+
+	// Convertir a mapa para búsqueda rápida
+	habilitadosMap := make(map[int]bool)
+	for _, id := range habilitadosIds {
+		habilitadosMap[id] = true
+	}
+
+	// Obtener las respuestas de esta autoevaluación
+	respuestas, err := s.respuestaRepo.FindByAutoevaluacion(ctx, auto.ID)
+	if err != nil {
+		return nil, fmt.Errorf("error getting respuestas: %w", err)
+	}
+
+	// Crear mapa de respuestas por indicador
+	respuestasPorIndicador := make(map[int]*domain.Respuesta)
+	for _, resp := range respuestas {
+		respuestasPorIndicador[resp.IDIndicador] = resp
+	}
+
+	// Obtener todos los capítulos
+	capitulos, err := s.capituloRepo.FindAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error getting capitulos: %w", err)
+	}
+
+	// Construir la estructura de resultados
+	resultadoCapitulos := make([]domain.ResultadoCapitulo, 0)
+
+	for _, cap := range capitulos {
+		// Obtener indicadores del capítulo
+		indicadores, err := s.indicadorRepo.FindByCapitulo(ctx, cap.ID)
+		if err != nil {
+			return nil, fmt.Errorf("error getting indicadores: %w", err)
+		}
+
+		resultadoIndicadores := make([]domain.ResultadoIndicador, 0)
+
+		for _, ind := range indicadores {
+			// Solo incluir indicadores habilitados para el segmento
+			if !habilitadosMap[ind.ID] {
+				continue
+			}
+
+			// Solo incluir indicadores que tienen respuesta
+			respuesta, tieneRespuesta := respuestasPorIndicador[ind.ID]
+			if !tieneRespuesta {
+				continue
+			}
+
+			// Obtener todos los niveles de respuesta del indicador
+			nivelesRespuesta, err := s.nivelRespuestaRepo.FindByIndicador(ctx, ind.ID)
+			if err != nil {
+				return nil, fmt.Errorf("error getting niveles_respuesta: %w", err)
+			}
+
+			// Filtrar solo el nivel que fue seleccionado
+			resultadoNiveles := make([]domain.ResultadoNivelRespuesta, 0)
+			for _, nivel := range nivelesRespuesta {
+				if nivel.ID == respuesta.IDNivelRespuesta {
+					resultadoNiveles = append(resultadoNiveles, domain.ResultadoNivelRespuesta{
+						Nombre:      nivel.Nombre,
+						Descripcion: nivel.Descripcion,
+						Puntos:      nivel.Puntos,
+					})
+					break
+				}
+			}
+
+			resultadoIndicadores = append(resultadoIndicadores, domain.ResultadoIndicador{
+				Nombre:           ind.Nombre,
+				Descripcion:      ind.Descripcion,
+				Orden:            ind.Orden,
+				NivelesRespuesta: resultadoNiveles,
+			})
+		}
+
+		// Solo incluir capítulos que tengan al menos un indicador con respuesta
+		if len(resultadoIndicadores) > 0 {
+			resultadoCapitulos = append(resultadoCapitulos, domain.ResultadoCapitulo{
+				Nombre:      cap.Nombre,
+				Orden:       cap.Orden,
+				Indicadores: resultadoIndicadores,
+			})
+		}
+	}
+
+	// Construir la respuesta final
+	response := &domain.ResultadoAutoevaluacionResponse{
+		Bodega: domain.ResultadoBodega{
+			NombreFantasia: bodega.NombreFantasia,
+		},
+		Autoevaluacion: domain.ResultadoAutoevaluacion{
+			FechaFin:     *auto.FechaFin,
+			PuntajeFinal: *auto.PuntajeFinal,
+		},
+		Segmento: domain.ResultadoSegmento{
+			Nombre: segmento.Nombre,
+		},
+		NivelSustentabilidad: domain.ResultadoNivelSustentabilidad{
+			Nombre: nombreNivelSustentabilidad,
+		},
+		Capitulos: resultadoCapitulos,
+	}
+
+	return response, nil
+}
