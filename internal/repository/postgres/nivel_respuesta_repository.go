@@ -78,8 +78,8 @@ func (r *NivelRespuestaRepository) FindMaxPuntosBySegmento(ctx context.Context, 
 			MAX(nr.puntos) as max_puntos
 		FROM indicadores i
 		INNER JOIN niveles_respuesta nr ON i.id_indicador = nr.id_indicador
-		INNER JOIN indicadores_segmentos iseg ON i.id_indicador = iseg.id_indicador
-		WHERE iseg.id_segmento = $1
+		INNER JOIN segmento_indicador si ON i.id_indicador = si.id_indicador
+		WHERE si.id_segmento = $1
 		GROUP BY i.id_indicador
 	`
 
