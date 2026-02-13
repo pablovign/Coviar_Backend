@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"coviar_backend/internal/domain"
 	"coviar_backend/internal/repository"
@@ -566,4 +567,276 @@ func (s *AutoevaluacionService) GetResultadosUltimaAutoevaluacion(ctx context.Co
 	}
 
 	return response, nil
+}
+
+// GetHistorialAutoevaluaciones obtiene la lista resumida de todas las autoevaluaciones completadas de una bodega
+func (s *AutoevaluacionService) GetHistorialAutoevaluaciones(ctx context.Context, idBodega int) ([]domain.HistorialItemResponse, error) {
+	// Obtener todas las autoevaluaciones completadas
+	autoevaluaciones, err := s.autoevaluacionRepo.FindCompletadasByBodega(ctx, idBodega)
+	if err != nil {
+		return nil, fmt.Errorf("error finding completed autoevaluaciones: %w", err)
+	}
+
+	if len(autoevaluaciones) == 0 {
+		return []domain.HistorialItemResponse{}, nil
+	}
+
+	// Cache de max puntos por segmento para evitar queries repetidas
+	maxPuntosCache := make(map[int]map[int]int)
+
+	historial := make([]domain.HistorialItemResponse, 0, len(autoevaluaciones))
+
+	for _, auto := range autoevaluaciones {
+		item := domain.HistorialItemResponse{
+			IDAutoevaluacion:      auto.ID,
+			FechaInicio:           auto.FechaInicio,
+			FechaFinalizacion:     auto.FechaFin,
+			Estado:                strings.ToLower(string(auto.Estado)),
+			IDBodega:              auto.IDBodega,
+			IDSegmento:            auto.IDSegmento,
+			PuntajeFinal:          auto.PuntajeFinal,
+			IDNivelSostenibilidad: auto.IDNivelSostenibilidad,
+		}
+
+		// Resolver segmento y calcular puntaje máximo
+		if auto.IDSegmento != nil {
+			segmento, err := s.segmentoRepo.FindByID(ctx, *auto.IDSegmento)
+			if err == nil && segmento != nil {
+				item.NombreSegmento = segmento.Nombre
+			}
+
+			// Obtener max puntos (con cache)
+			maxPuntos, exists := maxPuntosCache[*auto.IDSegmento]
+			if !exists {
+				maxPuntos, err = s.nivelRespuestaRepo.FindMaxPuntosBySegmento(ctx, *auto.IDSegmento)
+				if err != nil {
+					return nil, fmt.Errorf("error getting max puntos for segmento %d: %w", *auto.IDSegmento, err)
+				}
+				maxPuntosCache[*auto.IDSegmento] = maxPuntos
+			}
+
+			// Calcular puntaje máximo total
+			totalMax := 0
+			for _, mp := range maxPuntos {
+				totalMax += mp
+			}
+			if totalMax > 0 {
+				item.PuntajeMaximo = &totalMax
+
+				// Calcular porcentaje si tenemos puntaje final
+				if auto.PuntajeFinal != nil {
+					porcentaje := (*auto.PuntajeFinal * 100) / totalMax
+					item.Porcentaje = &porcentaje
+				}
+			}
+		}
+
+		// Resolver nivel de sostenibilidad
+		if auto.IDNivelSostenibilidad != nil && auto.IDSegmento != nil {
+			niveles, err := s.segmentoRepo.FindNivelesSostenibilidadBySegmento(ctx, *auto.IDSegmento)
+			if err == nil {
+				for _, nivel := range niveles {
+					if nivel.ID == *auto.IDNivelSostenibilidad {
+						item.NivelSostenibilidad = &domain.NivelSostenibilidadInfo{
+							ID:     nivel.ID,
+							Nombre: nivel.Nombre,
+						}
+						break
+					}
+				}
+			}
+		}
+
+		historial = append(historial, item)
+	}
+
+	return historial, nil
+}
+
+// GetResultadosByID obtiene los resultados detallados de una autoevaluación específica con desglose por capítulos
+func (s *AutoevaluacionService) GetResultadosByID(ctx context.Context, idAutoevaluacion int, bodegaRepo repository.BodegaRepository) (*domain.ResultadoDetalladoResponse, error) {
+	// Obtener la autoevaluación
+	auto, err := s.autoevaluacionRepo.FindByID(ctx, idAutoevaluacion)
+	if err != nil {
+		return nil, fmt.Errorf("error finding autoevaluacion: %w", err)
+	}
+	if auto == nil {
+		return nil, domain.ErrNotFound
+	}
+
+	// Verificar que esté completada
+	if auto.Estado != domain.EstadoCompletada {
+		return nil, fmt.Errorf("autoevaluacion is not completed")
+	}
+
+	// Verificar que tenga segmento
+	if auto.IDSegmento == nil {
+		return nil, fmt.Errorf("autoevaluacion does not have segmento")
+	}
+
+	// Construir el item del historial
+	historialItem := domain.HistorialItemResponse{
+		IDAutoevaluacion:      auto.ID,
+		FechaInicio:           auto.FechaInicio,
+		FechaFinalizacion:     auto.FechaFin,
+		Estado:                strings.ToLower(string(auto.Estado)),
+		IDBodega:              auto.IDBodega,
+		IDSegmento:            auto.IDSegmento,
+		PuntajeFinal:          auto.PuntajeFinal,
+		IDNivelSostenibilidad: auto.IDNivelSostenibilidad,
+	}
+
+	// Resolver segmento y calcular puntaje máximo
+	maxPuntos, err := s.nivelRespuestaRepo.FindMaxPuntosBySegmento(ctx, *auto.IDSegmento)
+	if err != nil {
+		return nil, fmt.Errorf("error getting max puntos: %w", err)
+	}
+
+	totalMax := 0
+	for _, mp := range maxPuntos {
+		totalMax += mp
+	}
+	if totalMax > 0 {
+		historialItem.PuntajeMaximo = &totalMax
+		if auto.PuntajeFinal != nil {
+			porcentaje := (*auto.PuntajeFinal * 100) / totalMax
+			historialItem.Porcentaje = &porcentaje
+		}
+	}
+
+	// Resolver segmento
+	segmento, err := s.segmentoRepo.FindByID(ctx, *auto.IDSegmento)
+	if err == nil && segmento != nil {
+		historialItem.NombreSegmento = segmento.Nombre
+	}
+
+	// Resolver nivel de sostenibilidad
+	if auto.IDNivelSostenibilidad != nil {
+		niveles, err := s.segmentoRepo.FindNivelesSostenibilidadBySegmento(ctx, *auto.IDSegmento)
+		if err == nil {
+			for _, nivel := range niveles {
+				if nivel.ID == *auto.IDNivelSostenibilidad {
+					historialItem.NivelSostenibilidad = &domain.NivelSostenibilidadInfo{
+						ID:     nivel.ID,
+						Nombre: nivel.Nombre,
+					}
+					break
+				}
+			}
+		}
+	}
+
+	// Obtener indicadores habilitados para este segmento
+	habilitadosIds, err := s.indicadorRepo.FindBySegmento(ctx, *auto.IDSegmento)
+	if err != nil {
+		return nil, fmt.Errorf("error getting enabled indicators: %w", err)
+	}
+
+	habilitadosMap := make(map[int]bool)
+	for _, id := range habilitadosIds {
+		habilitadosMap[id] = true
+	}
+
+	// Obtener respuestas
+	respuestas, err := s.respuestaRepo.FindByAutoevaluacion(ctx, auto.ID)
+	if err != nil {
+		return nil, fmt.Errorf("error getting respuestas: %w", err)
+	}
+
+	respuestasPorIndicador := make(map[int]*domain.Respuesta)
+	for _, resp := range respuestas {
+		respuestasPorIndicador[resp.IDIndicador] = resp
+	}
+
+	// Obtener todos los capítulos
+	capitulos, err := s.capituloRepo.FindAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error getting capitulos: %w", err)
+	}
+
+	// Construir desglose por capítulos
+	resultadoCapitulos := make([]domain.ResultadoCapituloDetallado, 0)
+
+	for _, cap := range capitulos {
+		// Obtener indicadores del capítulo
+		indicadores, err := s.indicadorRepo.FindByCapitulo(ctx, cap.ID)
+		if err != nil {
+			return nil, fmt.Errorf("error getting indicadores: %w", err)
+		}
+
+		resultadoIndicadores := make([]domain.ResultadoIndicadorDetalle, 0)
+		puntajeCapitulo := 0
+		maxPuntosCapitulo := 0
+		indicadoresCompletados := 0
+
+		for _, ind := range indicadores {
+			// Solo incluir indicadores habilitados para el segmento
+			if !habilitadosMap[ind.ID] {
+				continue
+			}
+
+			// Obtener max puntos del indicador
+			maxPuntosInd := maxPuntos[ind.ID]
+			maxPuntosCapitulo += maxPuntosInd
+
+			respuesta, tieneRespuesta := respuestasPorIndicador[ind.ID]
+			if !tieneRespuesta {
+				continue
+			}
+
+			indicadoresCompletados++
+
+			// Obtener el nivel de respuesta seleccionado
+			nivelRespuesta, err := s.nivelRespuestaRepo.FindByID(ctx, respuesta.IDNivelRespuesta)
+			if err != nil {
+				return nil, fmt.Errorf("error getting nivel_respuesta: %w", err)
+			}
+
+			puntajeCapitulo += nivelRespuesta.Puntos
+
+			resultadoIndicadores = append(resultadoIndicadores, domain.ResultadoIndicadorDetalle{
+				IDIndicador:          ind.ID,
+				Nombre:               ind.Nombre,
+				Descripcion:          ind.Descripcion,
+				Orden:                ind.Orden,
+				RespuestaNombre:      nivelRespuesta.Nombre,
+				RespuestaDescripcion: nivelRespuesta.Descripcion,
+				RespuestaPuntos:      nivelRespuesta.Puntos,
+				PuntajeMaximo:        maxPuntosInd,
+			})
+		}
+
+		// Calcular porcentaje del capítulo
+		porcentajeCapitulo := 0
+		if maxPuntosCapitulo > 0 {
+			porcentajeCapitulo = (puntajeCapitulo * 100) / maxPuntosCapitulo
+		}
+
+		// Contar indicadores totales habilitados para este capítulo
+		indicadoresTotales := 0
+		for _, ind := range indicadores {
+			if habilitadosMap[ind.ID] {
+				indicadoresTotales++
+			}
+		}
+
+		// Solo incluir capítulos que tengan al menos un indicador habilitado
+		if indicadoresTotales > 0 {
+			resultadoCapitulos = append(resultadoCapitulos, domain.ResultadoCapituloDetallado{
+				IDCapitulo:             cap.ID,
+				Nombre:                 cap.Nombre,
+				PuntajeObtenido:        puntajeCapitulo,
+				PuntajeMaximo:          maxPuntosCapitulo,
+				Porcentaje:             porcentajeCapitulo,
+				IndicadoresCompletados: indicadoresCompletados,
+				IndicadoresTotal:       indicadoresTotales,
+				Indicadores:            resultadoIndicadores,
+			})
+		}
+	}
+
+	return &domain.ResultadoDetalladoResponse{
+		Autoevaluacion: historialItem,
+		Capitulos:      resultadoCapitulos,
+	}, nil
 }
