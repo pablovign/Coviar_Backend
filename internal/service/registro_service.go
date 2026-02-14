@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -37,6 +38,9 @@ func (s *RegistroService) RegistrarBodega(ctx context.Context, req *domain.Regis
 	if err := s.validarRegistro(req); err != nil {
 		return nil, err
 	}
+
+	// Normalizar datos a mayúsculas
+	s.normalizarRegistroRequest(req)
 
 	// Verificar duplicados
 	if err := s.verificarDuplicados(ctx, req); err != nil {
@@ -191,6 +195,41 @@ func (s *RegistroService) verificarDuplicados(ctx context.Context, req *domain.R
 	}
 
 	return nil
+}
+
+// normalizarRegistroRequest convierte todos los campos de texto del request a mayúsculas.
+// Los emails se convierten a minúsculas para estandarización (estándar de emails).
+// Los campos numéricos como CUIT, DNI y teléfono no se modifican.
+func (s *RegistroService) normalizarRegistroRequest(req *domain.RegistroRequest) {
+	// ===== NORMALIZAR BODEGA =====
+	req.Bodega.RazonSocial = validator.NormalizarTexto(req.Bodega.RazonSocial)
+	req.Bodega.NombreFantasia = validator.NormalizarTexto(req.Bodega.NombreFantasia)
+	req.Bodega.Calle = validator.NormalizarTexto(req.Bodega.Calle)
+	req.Bodega.Numeracion = validator.NormalizarTexto(req.Bodega.Numeracion)
+
+	// CUIT solo contiene números, no requiere conversión
+	// req.Bodega.CUIT permanece igual
+
+	// Teléfono solo contiene números, no requiere conversión
+	// req.Bodega.Telefono permanece igual
+
+	// Email institucional: se convierte a minúsculas (estándar de emails)
+	req.Bodega.EmailInstitucional = strings.ToLower(strings.TrimSpace(req.Bodega.EmailInstitucional))
+
+	// Códigos INV: si existen, convertir a mayúsculas
+	req.Bodega.InvBod = validator.NormalizarPuntero(req.Bodega.InvBod)
+	req.Bodega.InvVin = validator.NormalizarPuntero(req.Bodega.InvVin)
+
+	// ===== NORMALIZAR CUENTA =====
+	// Email de login: se convierte a minúsculas (estándar de emails)
+	req.Cuenta.EmailLogin = strings.ToLower(strings.TrimSpace(req.Cuenta.EmailLogin))
+	// La contraseña NO se modifica - es case-sensitive por seguridad
+
+	// ===== NORMALIZAR RESPONSABLE =====
+	req.Responsable.Nombre = validator.NormalizarTexto(req.Responsable.Nombre)
+	req.Responsable.Apellido = validator.NormalizarTexto(req.Responsable.Apellido)
+	req.Responsable.Cargo = validator.NormalizarTexto(req.Responsable.Cargo)
+	// DNI solo contiene números, no requiere conversión
 }
 
 func hashPassword(password string) (string, error) {

@@ -50,6 +50,11 @@ func (s *ResponsableService) Create(ctx context.Context, cuentaID int, dto *doma
 		return nil, domain.ErrValidation
 	}
 
+	// Normalizar campos de texto a mayúsculas
+	dto.Nombre = validator.NormalizarTexto(dto.Nombre)
+	dto.Apellido = validator.NormalizarTexto(dto.Apellido)
+	dto.Cargo = validator.NormalizarTexto(dto.Cargo)
+
 	// Verificar que la cuenta existe
 	_, err := s.cuentaRepo.FindByID(ctx, cuentaID)
 	if err != nil {
@@ -87,6 +92,11 @@ func (s *ResponsableService) Update(ctx context.Context, id int, dto *domain.Res
 	if err := validator.ValidateDNI(dto.DNI); err != nil {
 		return domain.ErrValidation
 	}
+
+	// Normalizar campos de texto a mayúsculas
+	dto.Nombre = validator.NormalizarTexto(dto.Nombre)
+	dto.Apellido = validator.NormalizarTexto(dto.Apellido)
+	dto.Cargo = validator.NormalizarTexto(dto.Cargo)
 
 	responsable, err := s.responsableRepo.FindByID(ctx, id)
 	if err != nil {
