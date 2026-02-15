@@ -67,7 +67,7 @@ func (r *AutoevaluacionRepository) FindByID(ctx context.Context, id int) (*domai
 	auto := &domain.Autoevaluacion{}
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&auto.ID, &auto.FechaInicio, &auto.FechaFin, &auto.Estado, &auto.IDBodega, &auto.IDSegmento,
-		&auto.PuntajeFinal, &auto.IDNivelSostenibilidad,                                   
+		&auto.PuntajeFinal, &auto.IDNivelSostenibilidad,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -170,7 +170,7 @@ func (r *AutoevaluacionRepository) FindPendienteByBodega(ctx context.Context, id
 	auto := &domain.Autoevaluacion{}
 	err := r.db.QueryRowContext(ctx, query, idBodega, domain.EstadoPendiente).Scan(
 		&auto.ID, &auto.FechaInicio, &auto.FechaFin, &auto.Estado, &auto.IDBodega, &auto.IDSegmento,
-		&auto.PuntajeFinal, &auto.IDNivelSostenibilidad,                                   
+		&auto.PuntajeFinal, &auto.IDNivelSostenibilidad,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -203,4 +203,80 @@ func (r *AutoevaluacionRepository) HasPendingByBodega(ctx context.Context, idBod
 	}
 
 	return exists, nil
+}
+
+// FindUltimaCompletadaByBodega obtiene la última autoevaluación completada de una bodega
+func (r *AutoevaluacionRepository) FindUltimaCompletadaByBodega(ctx context.Context, idBodega int) (*domain.Autoevaluacion, error) {
+	query := `
+		SELECT id_autoevaluacion, fecha_inicio, fecha_fin, estado, id_bodega, id_segmento,
+		       puntaje_final, id_nivel_sostenibilidad
+		FROM autoevaluaciones
+		WHERE id_bodega = $1 AND estado = $2
+		ORDER BY fecha_fin DESC
+		LIMIT 1
+	`
+
+	auto := &domain.Autoevaluacion{}
+	err := r.db.QueryRowContext(ctx, query, idBodega, domain.EstadoCompletada).Scan(
+		&auto.ID, &auto.FechaInicio, &auto.FechaFin, &auto.Estado, &auto.IDBodega, &auto.IDSegmento,
+		&auto.PuntajeFinal, &auto.IDNivelSostenibilidad,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // No hay autoevaluación completada
+		}
+		return nil, fmt.Errorf("error finding completed autoevaluacion: %w", err)
+	}
+
+	return auto, nil
+}
+
+// FindCompletadasByBodega obtiene todas las autoevaluaciones completadas de una bodega
+func (r *AutoevaluacionRepository) FindCompletadasByBodega(ctx context.Context, idBodega int) ([]*domain.Autoevaluacion, error) {
+	query := `
+		SELECT
+			id_autoevaluacion,
+			id_bodega,
+			id_segmento,
+			estado,
+			puntaje_final,
+			id_nivel_sostenibilidad,
+			fecha_inicio,
+			fecha_fin
+		FROM autoevaluaciones
+		WHERE id_bodega = $1
+			AND estado = 'COMPLETADA'
+		ORDER BY fecha_inicio DESC
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, idBodega)
+	if err != nil {
+		return nil, fmt.Errorf("error querying completadas autoevaluaciones: %w", err)
+	}
+	defer rows.Close()
+
+	var autoevaluaciones []*domain.Autoevaluacion
+	for rows.Next() {
+		auto := &domain.Autoevaluacion{}
+		err := rows.Scan(
+			&auto.ID,
+			&auto.IDBodega,
+			&auto.IDSegmento,
+			&auto.Estado,
+			&auto.PuntajeFinal,
+			&auto.IDNivelSostenibilidad,
+			&auto.FechaInicio,
+			&auto.FechaFin,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning autoevaluacion: %w", err)
+		}
+		autoevaluaciones = append(autoevaluaciones, auto)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating rows: %w", err)
+	}
+
+	return autoevaluaciones, nil
 }

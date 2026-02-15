@@ -96,3 +96,34 @@ func ValidateInvCode(code *string, fieldName string) error {
 
 	return nil
 }
+
+// ============================================
+// FUNCIONES DE NORMALIZACIÓN DE TEXTO
+// ============================================
+
+// NormalizarTexto convierte el texto a mayúsculas preservando la Ñ y caracteres acentuados.
+// Esta función es segura para UTF-8 y respeta los caracteres del idioma español.
+func NormalizarTexto(s string) string {
+	return strings.ToUpper(strings.TrimSpace(s))
+}
+
+// NormalizarTextoSinTildes convierte el texto a mayúsculas y remueve los acentos
+// de las vocales, pero preserva la Ñ.
+// Usar esta función solo si se requiere normalización para búsquedas.
+func NormalizarTextoSinTildes(s string) string {
+	s = strings.ToUpper(strings.TrimSpace(s))
+	r := strings.NewReplacer(
+		"Á", "A", "É", "E", "Í", "I", "Ó", "O", "Ú", "U", "Ü", "U",
+	)
+	return r.Replace(s)
+}
+
+// NormalizarPuntero convierte el texto de un puntero a mayúsculas.
+// Retorna nil si el puntero es nil o si el valor es vacío.
+func NormalizarPuntero(s *string) *string {
+	if s == nil || strings.TrimSpace(*s) == "" {
+		return nil
+	}
+	normalizado := NormalizarTexto(*s)
+	return &normalizado
+}

@@ -27,6 +27,12 @@ func (s *BodegaService) Update(ctx context.Context, id int, dto *domain.BodegaUp
 	if err := validator.ValidateEmail(dto.EmailInstitucional); err != nil {
 		return domain.ErrValidation
 	}
+	if err := validator.ValidateNotEmpty(dto.NombreFantasia, "nombre_fantasia"); err != nil {
+		return domain.ErrValidation
+	}
+
+	// Normalizar campos de texto a mayúsculas
+	dto.NombreFantasia = validator.NormalizarTexto(dto.NombreFantasia)
 
 	bodega, err := s.bodegaRepo.FindByID(ctx, id)
 	if err != nil {

@@ -280,3 +280,128 @@ type AutoevaluacionPendienteResponse struct {
 	Respuestas              []GuardarRespuestaRequest `json:"respuestas,omitempty"`
 	Mensaje                 string                    `json:"mensaje"`
 }
+
+// ============================================
+// DTOs PARA RESULTADOS DE AUTOEVALUACIÓN
+// ============================================
+
+type ResultadoAutoevaluacionResponse struct {
+	Bodega               ResultadoBodega               `json:"bodega"`
+	Autoevaluacion       ResultadoAutoevaluacion       `json:"autoevaluacion"`
+	Segmento             ResultadoSegmento             `json:"segmento"`
+	NivelSustentabilidad ResultadoNivelSustentabilidad `json:"nivel_sustentabilidad"`
+	Capitulos            []ResultadoCapitulo           `json:"capitulos"`
+}
+
+type ResultadoBodega struct {
+	NombreFantasia string `json:"nombre_fantasia"`
+}
+
+type ResultadoAutoevaluacion struct {
+	FechaFin     time.Time `json:"fecha_fin"`
+	PuntajeFinal int       `json:"puntaje_final"`
+}
+
+type ResultadoSegmento struct {
+	Nombre string `json:"nombre"`
+}
+
+type ResultadoNivelSustentabilidad struct {
+	Nombre string `json:"nombre"`
+}
+
+type ResultadoCapitulo struct {
+	Nombre      string               `json:"nombre"`
+	Orden       int                  `json:"orden"`
+	Indicadores []ResultadoIndicador `json:"indicadores"`
+}
+
+type ResultadoIndicador struct {
+	Nombre           string                    `json:"nombre"`
+	Descripcion      string                    `json:"descripcion"`
+	Orden            int                       `json:"orden"`
+	NivelesRespuesta []ResultadoNivelRespuesta `json:"niveles_respuesta"`
+}
+
+type ResultadoNivelRespuesta struct {
+	Nombre      string `json:"nombre"`
+	Descripcion string `json:"descripcion"`
+	Puntos      int    `json:"puntos"`
+}
+
+// ============================================
+// MODELOS DE ADMINISTRADOR
+// ============================================
+
+type AdminStatsResponse struct {
+	TotalBodegas             int `json:"totalBodegas"`
+	EvaluacionesCompletadas  int `json:"evaluacionesCompletadas"`
+	PromedioSostenibilidad   int `json:"promedioSostenibilidad"`
+}
+
+type EvaluacionListItem struct {
+	IDAutoevaluacion int        `json:"id_autoevaluacion"`
+	IDBodega         int        `json:"id_bodega"`
+	NombreBodega     string     `json:"nombre_bodega"`
+	RazonSocial      string     `json:"razon_social"`
+	Estado           string     `json:"estado"`
+	Porcentaje       *int       `json:"porcentaje"`
+	FechaInicio      time.Time  `json:"fecha_inicio"`
+	FechaFin         *time.Time `json:"fecha_fin"`
+	Responsable      string     `json:"responsable"`
+}
+
+// ============================================
+// MODELOS DE HISTORIAL
+// ============================================
+
+type HistorialItemResponse struct {
+	IDAutoevaluacion      int                      `json:"id_autoevaluacion"`
+	FechaInicio           time.Time                `json:"fecha_inicio"`
+	FechaFinalizacion     *time.Time               `json:"fecha_finalizacion,omitempty"`
+	Estado                string                   `json:"estado"`
+	IDBodega              int                      `json:"id_bodega"`
+	IDSegmento            *int                     `json:"id_segmento"`
+	NombreSegmento        string                   `json:"nombre_segmento,omitempty"`
+	PuntajeFinal          *int                     `json:"puntaje_final"`
+	PuntajeMaximo         *int                     `json:"puntaje_maximo"`
+	Porcentaje            *int                     `json:"porcentaje"`
+	IDNivelSostenibilidad *int                     `json:"id_nivel_sostenibilidad"`
+	NivelSostenibilidad   *NivelSostenibilidadInfo `json:"nivel_sostenibilidad,omitempty"`
+}
+
+// NivelSostenibilidadInfo contiene info resumida del nivel de sostenibilidad
+type NivelSostenibilidadInfo struct {
+	ID     int    `json:"id"`
+	Nombre string `json:"nombre"`
+}
+
+// ResultadoDetalladoResponse representa el resultado completo de una autoevaluación con desglose por capítulos
+type ResultadoDetalladoResponse struct {
+	Autoevaluacion HistorialItemResponse       `json:"autoevaluacion"`
+	Capitulos      []ResultadoCapituloDetallado `json:"capitulos"`
+}
+
+// ResultadoCapituloDetallado representa el resumen de puntajes de un capítulo con sus indicadores
+type ResultadoCapituloDetallado struct {
+	IDCapitulo             int                         `json:"id_capitulo"`
+	Nombre                 string                      `json:"nombre"`
+	PuntajeObtenido        int                         `json:"puntaje_obtenido"`
+	PuntajeMaximo          int                         `json:"puntaje_maximo"`
+	Porcentaje             int                         `json:"porcentaje"`
+	IndicadoresCompletados int                         `json:"indicadores_completados"`
+	IndicadoresTotal       int                         `json:"indicadores_total"`
+	Indicadores            []ResultadoIndicadorDetalle `json:"indicadores"`
+}
+
+// ResultadoIndicadorDetalle representa un indicador con la respuesta seleccionada
+type ResultadoIndicadorDetalle struct {
+	IDIndicador          int    `json:"id_indicador"`
+	Nombre               string `json:"nombre"`
+	Descripcion          string `json:"descripcion"`
+	Orden                int    `json:"orden"`
+	RespuestaNombre      string `json:"respuesta_nombre"`
+	RespuestaDescripcion string `json:"respuesta_descripcion"`
+	RespuestaPuntos      int    `json:"respuesta_puntos"`
+	PuntajeMaximo        int    `json:"puntaje_maximo"`
+}
