@@ -88,8 +88,7 @@ type AutoevaluacionRepository interface {
 	CompleteWithScore(ctx context.Context, id int, puntajeFinal int, idNivelSostenibilidad int) error
 	Cancel(ctx context.Context, id int) error
 	HasPendingByBodega(ctx context.Context, idBodega int) (bool, error)
-	FindUltimaCompletadaByBodega(ctx context.Context, idBodega int) (*domain.Autoevaluacion, error)
-	FindCompletadasByBodega(ctx context.Context, idBodega int) ([]*domain.Autoevaluacion, error)
+	UpdateEvidenciaStatus(ctx context.Context, id int, estado domain.EstadoEvidencia) error
 }
 
 type CapituloRepository interface {
@@ -103,8 +102,6 @@ type IndicadorRepository interface {
 
 type NivelRespuestaRepository interface {
 	FindByIndicador(ctx context.Context, idIndicador int) ([]*domain.NivelRespuesta, error)
-	FindByID(ctx context.Context, id int) (*domain.NivelRespuesta, error)
-	FindMaxPuntosBySegmento(ctx context.Context, idSegmento int) (map[int]int, error)
 }
 
 type RespuestaRepository interface {
@@ -113,4 +110,12 @@ type RespuestaRepository interface {
 	FindByAutoevaluacion(ctx context.Context, idAutoevaluacion int) ([]*domain.Respuesta, error)
 	DeleteByAutoevaluacion(ctx context.Context, idAutoevaluacion int) error
 	CalculateTotalScore(ctx context.Context, idAutoevaluacion int) (int, error)
+}
+
+type EvidenciaRepository interface {
+	Create(ctx context.Context, tx Transaction, evidencia *domain.Evidencia) (int, error)
+	FindByRespuesta(ctx context.Context, idRespuesta int) (*domain.Evidencia, error)
+	FindByAutoevaluacion(ctx context.Context, idAutoevaluacion int) ([]*domain.Evidencia, error)
+	Delete(ctx context.Context, tx Transaction, id int) error
+	CountEvidenciasByAutoevaluacion(ctx context.Context, idAutoevaluacion int) (int, error)
 }

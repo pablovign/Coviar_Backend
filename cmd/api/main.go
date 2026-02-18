@@ -41,8 +41,8 @@ func main() {
 	indicadorRepo := postgres.NewIndicadorRepository(db.DB)
 	nivelRespuestaRepo := postgres.NewNivelRespuestaRepository(db.DB)
 	respuestaRepo := postgres.NewRespuestaRepository(db.DB)
-	adminRepo := postgres.NewAdminRepository(db.DB)
 	txManager := postgres.NewTransactionManager(db.DB)
+	evidenciaRepo := postgres.NewEvidenciaRepository(db.DB)
 
 	log.Println("✓ Repositorios inicializados")
 
@@ -52,8 +52,8 @@ func main() {
 	cuentaService := service.NewCuentaService(cuentaRepo, bodegaRepo)
 	bodegaService := service.NewBodegaService(bodegaRepo)
 	responsableService := service.NewResponsableService(responsableRepo, cuentaRepo, autoevaluacionRepo)
-	autoevaluacionService := service.NewAutoevaluacionService(autoevaluacionRepo, segmentoRepo, capituloRepo, indicadorRepo, nivelRespuestaRepo, respuestaRepo)
-	adminService := service.NewAdminService(adminRepo)
+	autoevaluacionService := service.NewAutoevaluacionService(autoevaluacionRepo, segmentoRepo, capituloRepo, indicadorRepo, nivelRespuestaRepo, respuestaRepo, evidenciaRepo)
+	evidenciaService := service.NewEvidenciaService(evidenciaRepo, respuestaRepo, autoevaluacionRepo, bodegaRepo, indicadorRepo)
 
 	log.Println("✓ Servicios inicializados")
 
@@ -63,8 +63,8 @@ func main() {
 	cuentaHandler := handler.NewCuentaHandler(cuentaService, cfg.JWT.Secret)
 	bodegaHandler := handler.NewBodegaHandler(bodegaService)
 	responsableHandler := handler.NewResponsableHandler(responsableService)
-	autoevaluacionHandler := handler.NewAutoevaluacionHandler(autoevaluacionService, bodegaRepo)
-	adminHandler := handler.NewAdminHandler(adminService)
+	autoevaluacionHandler := handler.NewAutoevaluacionHandler(autoevaluacionService)
+	evidenciaHandler := handler.NewEvidenciaHandler(evidenciaService)
 
 	log.Println("✓ Handlers inicializados")
 
@@ -159,19 +159,19 @@ func main() {
 
 	// Autoevaluaciones (protegidas)
 	r.POST("/api/autoevaluaciones", protect(autoevaluacionHandler.CreateAutoevaluacion))
-	r.GET("/api/autoevaluaciones/historial", protect(autoevaluacionHandler.GetHistorialAutoevaluaciones))
 	r.GET("/api/autoevaluaciones/{id_autoevaluacion}/segmentos", protect(autoevaluacionHandler.GetSegmentos))
 	r.PUT("/api/autoevaluaciones/{id_autoevaluacion}/segmento", protect(autoevaluacionHandler.SeleccionarSegmento))
 	r.GET("/api/autoevaluaciones/{id_autoevaluacion}/estructura", protect(autoevaluacionHandler.GetEstructura))
-	r.GET("/api/autoevaluaciones/{id_autoevaluacion}/resultados", protect(autoevaluacionHandler.GetResultadosAutoevaluacion))
 	r.POST("/api/autoevaluaciones/{id_autoevaluacion}/respuestas", protect(autoevaluacionHandler.GuardarRespuestas))
 	r.POST("/api/autoevaluaciones/{id_autoevaluacion}/completar", protect(autoevaluacionHandler.CompletarAutoevaluacion))
 	r.POST("/api/autoevaluaciones/{id_autoevaluacion}/cancelar", protect(autoevaluacionHandler.CancelarAutoevaluacion))
-	r.GET("/api/bodegas/{id_bodega}/resultados-autoevaluacion", protect(autoevaluacionHandler.GetResultadosUltimaAutoevaluacion))
-
-	// Admin (protegidas)
-	r.GET("/api/admin/stats", protect(adminHandler.GetStats))
-	r.GET("/api/admin/evaluaciones", protect(adminHandler.GetAllEvaluaciones))
+	r.POST("/api/autoevaluaciones/{id_autoevaluacion}/respuestas/{id_respuesta}/evidencias", protect(evidenciaHandler.AgregarEvidencia))
+	r.GET("/api/autoevaluaciones/{id_autoevaluacion}/respuestas/{id_respuesta}/evidencia", protect(evidenciaHandler.ObtenerEvidencia))
+	r.GET("/api/autoevaluaciones/{id_autoevaluacion}/evidencias", protect(evidenciaHandler.ObtenerEvidenciasPorAutoevaluacion))
+	r.GET("/api/autoevaluaciones/{id_autoevaluacion}/respuestas/{id_respuesta}/evidencia/descargar", protect(evidenciaHandler.DescargarEvidencia))
+	r.GET("/api/autoevaluaciones/{id_autoevaluacion}/evidencias/descargar", protect(evidenciaHandler.DescargarTodasEvidencias))
+	r.DELETE("/api/autoevaluaciones/{id_autoevaluacion}/respuestas/{id_respuesta}/evidencia", protect(evidenciaHandler.EliminarEvidencia))
+	r.PUT("/api/autoevaluaciones/{id_autoevaluacion}/respuestas/{id_respuesta}/evidencia", protect(evidenciaHandler.CambiarEvidencia))
 
 	// 7. Iniciar servidor
 	addr := cfg.Server.Host + ":" + cfg.Server.Port
