@@ -310,3 +310,144 @@ type ObtenerEvidenciaResponse struct {
 	Evidencia *Evidencia `json:"evidencia,omitempty"`
 	Mensaje   string     `json:"mensaje,omitempty"`
 }
+
+// ============================================
+// MODELOS DE ADMINISTRACIÓN
+// ============================================
+
+type AdminStatsResponse struct {
+	TotalBodegas            int                   `json:"totalBodegas"`
+	EvaluacionesCompletadas int                   `json:"evaluacionesCompletadas"`
+	PromedioSostenibilidad  float64               `json:"promedioSostenibilidad"`
+	NivelPromedio           string                `json:"nivelPromedio"`
+	DistribucionNiveles     DistribucionNiveles   `json:"distribucionNiveles"`
+}
+
+type DistribucionNiveles struct {
+	Minimo int `json:"minimo"`
+	Medio  int `json:"medio"`
+	Alto   int `json:"alto"`
+}
+
+type EvaluacionListItem struct {
+	IDAutoevaluacion int     `json:"id_autoevaluacion"`
+	IDBodega         int     `json:"id_bodega"`
+	NombreBodega     string  `json:"nombre_bodega"`
+	RazonSocial      string  `json:"razon_social"`
+	Estado           string  `json:"estado"`
+	FechaInicio      string  `json:"fecha_inicio"`
+	FechaFin         *string `json:"fecha_fin"`
+	Responsable      string  `json:"responsable"`
+}
+
+// ============================================
+// MODELOS DE HISTORIAL Y RESULTADOS
+// ============================================
+
+type HistorialItemResponse struct {
+	IDAutoevaluacion        int                      `json:"id_autoevaluacion"`
+	FechaInicio             string                   `json:"fecha_inicio"`
+	FechaFinalizacion       string                   `json:"fecha_finalizacion"`
+	Estado                  string                   `json:"estado"`
+	IDBodega                int                      `json:"id_bodega"`
+	IDSegmento              *int                     `json:"id_segmento"`
+	NombreSegmento          string                   `json:"nombre_segmento,omitempty"`
+	PuntajeFinal            *int                     `json:"puntaje_final"`
+	PuntajeMaximo           int                      `json:"puntaje_maximo"`
+	Porcentaje              float64                  `json:"porcentaje"`
+	IDNivelSostenibilidad   *int                     `json:"id_nivel_sostenibilidad"`
+	NivelSostenibilidad     *NivelSostenibilidadInfo `json:"nivel_sostenibilidad,omitempty"`
+	IndicadoresRespondidos  int                      `json:"indicadores_respondidos"`
+	IndicadoresTotal        int                      `json:"indicadores_total"`
+}
+
+type NivelSostenibilidadInfo struct {
+	ID          int    `json:"id"`
+	Nombre      string `json:"nombre"`
+	Descripcion string `json:"descripcion,omitempty"`
+}
+
+type ResponsableInfo struct {
+	Nombre   string `json:"nombre"`
+	Apellido string `json:"apellido"`
+	Cargo    string `json:"cargo"`
+	DNI      string `json:"dni"`
+}
+
+type ResultadoDetalladoResponse struct {
+	Autoevaluacion HistorialItemResponse        `json:"autoevaluacion"`
+	Capitulos      []ResultadoCapituloDetallado `json:"capitulos"`
+	Responsable    *ResponsableInfo             `json:"responsable,omitempty"`
+}
+
+type ResultadoCapituloDetallado struct {
+	IDCapitulo             int                        `json:"id_capitulo"`
+	Nombre                 string                     `json:"nombre"`
+	PuntajeObtenido        int                        `json:"puntaje_obtenido"`
+	PuntajeMaximo          int                        `json:"puntaje_maximo"`
+	Porcentaje             float64                    `json:"porcentaje"`
+	IndicadoresCompletados int                        `json:"indicadores_completados"`
+	IndicadoresTotal       int                        `json:"indicadores_total"`
+	Indicadores            []ResultadoIndicadorDetalle `json:"indicadores"`
+}
+
+type ResultadoIndicadorDetalle struct {
+	IDIndicador          int    `json:"id_indicador"`
+	Nombre               string `json:"nombre"`
+	Descripcion          string `json:"descripcion"`
+	Orden                int    `json:"orden"`
+	RespuestaNombre      string `json:"respuesta_nombre"`
+	RespuestaDescripcion string `json:"respuesta_descripcion"`
+	RespuestaPuntos      int    `json:"respuesta_puntos"`
+	PuntajeMaximo        int    `json:"puntaje_maximo"`
+	IDRespuesta          *int   `json:"id_respuesta,omitempty"`
+	TieneEvidencia       bool   `json:"tiene_evidencia"`
+}
+
+// ============================================
+// MODELOS PARA RESULTADOS DE BODEGA
+// ============================================
+
+type ResultadosBodegaResponse struct {
+	Bodega             BodegaResumen            `json:"bodega"`
+	Autoevaluacion     AutoevaluacionResumen    `json:"autoevaluacion"`
+	Segmento           SegmentoResumen          `json:"segmento"`
+	NivelSustentabilidad NivelResumen           `json:"nivel_sustentabilidad"`
+	Capitulos          []CapituloResultadoSimple `json:"capitulos"`
+}
+
+type BodegaResumen struct {
+	NombreFantasia string `json:"nombre_fantasia"`
+}
+
+type AutoevaluacionResumen struct {
+	FechaFin     string `json:"fecha_fin"`
+	PuntajeFinal int    `json:"puntaje_final"`
+}
+
+type SegmentoResumen struct {
+	Nombre string `json:"nombre"`
+}
+
+type NivelResumen struct {
+	Nombre string `json:"nombre"`
+}
+
+type CapituloResultadoSimple struct {
+	Nombre      string                     `json:"nombre"`
+	Orden       int                        `json:"orden"`
+	Indicadores []IndicadorResultadoSimple `json:"indicadores"`
+}
+
+type IndicadorResultadoSimple struct {
+	Nombre           string                       `json:"nombre"`
+	Descripcion      string                       `json:"descripcion"`
+	Orden            int                          `json:"orden"`
+	NivelesRespuesta []NivelRespuestaResultado    `json:"niveles_respuesta"`
+}
+
+type NivelRespuestaResultado struct {
+	Nombre      string `json:"nombre"`
+	Descripcion string `json:"descripcion"`
+	Puntos      int    `json:"puntos"`
+}

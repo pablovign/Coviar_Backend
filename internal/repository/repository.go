@@ -36,6 +36,7 @@ type ResponsableRepository interface {
 	Create(ctx context.Context, tx Transaction, responsable *domain.Responsable) (int, error)
 	FindByID(ctx context.Context, id int) (*domain.Responsable, error)
 	FindByCuentaID(ctx context.Context, cuentaID int) ([]*domain.Responsable, error)
+	FindActivoByBodega(ctx context.Context, idBodega int) (*domain.Responsable, error)
 	Update(ctx context.Context, tx Transaction, responsable *domain.Responsable) error
 	Delete(ctx context.Context, tx Transaction, id int) error
 }
@@ -89,6 +90,8 @@ type AutoevaluacionRepository interface {
 	Cancel(ctx context.Context, id int) error
 	HasPendingByBodega(ctx context.Context, idBodega int) (bool, error)
 	UpdateEvidenciaStatus(ctx context.Context, id int, estado domain.EstadoEvidencia) error
+	FindCompletadasByBodega(ctx context.Context, idBodega int) ([]*domain.Autoevaluacion, error)
+	FindLastCompletadaByBodega(ctx context.Context, idBodega int) (*domain.Autoevaluacion, error)
 }
 
 type CapituloRepository interface {
@@ -98,10 +101,19 @@ type CapituloRepository interface {
 type IndicadorRepository interface {
 	FindByCapitulo(ctx context.Context, idCapitulo int) ([]*domain.Indicador, error)
 	FindBySegmento(ctx context.Context, idSegmento int) ([]int, error)
+	FindByID(ctx context.Context, id int) (*domain.Indicador, error)
 }
 
 type NivelRespuestaRepository interface {
 	FindByIndicador(ctx context.Context, idIndicador int) ([]*domain.NivelRespuesta, error)
+	FindByID(ctx context.Context, id int) (*domain.NivelRespuesta, error)
+	FindMaxPuntosBySegmento(ctx context.Context, idSegmento int) (map[int]int, error)
+}
+
+// AdminRepository para operaciones de administración
+type AdminRepository interface {
+	GetStats(ctx context.Context) (*domain.AdminStatsResponse, error)
+	GetAllEvaluaciones(ctx context.Context, estado string, idBodega int) ([]domain.EvaluacionListItem, error)
 }
 
 type RespuestaRepository interface {

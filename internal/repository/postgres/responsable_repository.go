@@ -90,6 +90,32 @@ func (r *ResponsableRepository) FindByCuentaID(ctx context.Context, cuentaID int
 	return responsables, rows.Err()
 }
 
+func (r *ResponsableRepository) FindActivoByBodega(ctx context.Context, idBodega int) (*domain.Responsable, error) {
+	query := `
+		SELECT r.id_responsable, r.id_cuenta, r.nombre, r.apellido, r.cargo, r.dni, r.activo, r.fecha_registro, r.fecha_baja
+		FROM responsables r
+		JOIN cuentas c ON r.id_cuenta = c.id_cuenta
+		WHERE c.id_bodega = $1 AND r.activo = true
+		ORDER BY r.id_responsable
+		LIMIT 1
+	`
+
+	responsable := &domain.Responsable{}
+	err := r.db.QueryRowContext(ctx, query, idBodega).Scan(
+		&responsable.ID, &responsable.IDCuenta, &responsable.Nombre, &responsable.Apellido,
+		&responsable.Cargo, &responsable.DNI, &responsable.Activo, &responsable.FechaRegistro, &responsable.FechaBaja,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("error finding responsable activo by bodega: %w", err)
+	}
+
+	return responsable, nil
+}
+
 func (r *ResponsableRepository) Update(ctx context.Context, tx repository.Transaction, responsable *domain.Responsable) error {
 	query := `
 	       UPDATE responsables

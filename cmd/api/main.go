@@ -43,6 +43,7 @@ func main() {
 	respuestaRepo := postgres.NewRespuestaRepository(db.DB)
 	txManager := postgres.NewTransactionManager(db.DB)
 	evidenciaRepo := postgres.NewEvidenciaRepository(db.DB)
+	adminRepo := postgres.NewAdminRepository(db.DB)
 
 	log.Println("✓ Repositorios inicializados")
 
@@ -52,8 +53,9 @@ func main() {
 	cuentaService := service.NewCuentaService(cuentaRepo, bodegaRepo)
 	bodegaService := service.NewBodegaService(bodegaRepo)
 	responsableService := service.NewResponsableService(responsableRepo, cuentaRepo, autoevaluacionRepo)
-	autoevaluacionService := service.NewAutoevaluacionService(autoevaluacionRepo, segmentoRepo, capituloRepo, indicadorRepo, nivelRespuestaRepo, respuestaRepo, evidenciaRepo)
+	autoevaluacionService := service.NewAutoevaluacionService(autoevaluacionRepo, segmentoRepo, capituloRepo, indicadorRepo, nivelRespuestaRepo, respuestaRepo, evidenciaRepo, responsableRepo)
 	evidenciaService := service.NewEvidenciaService(evidenciaRepo, respuestaRepo, autoevaluacionRepo, bodegaRepo, indicadorRepo)
+	adminService := service.NewAdminService(adminRepo)
 
 	log.Println("✓ Servicios inicializados")
 
@@ -61,10 +63,11 @@ func main() {
 	registroHandler := handler.NewRegistroHandler(registroService)
 	ubicacionHandler := handler.NewUbicacionHandler(ubicacionService)
 	cuentaHandler := handler.NewCuentaHandler(cuentaService, cfg.JWT.Secret)
-	bodegaHandler := handler.NewBodegaHandler(bodegaService)
+	bodegaHandler := handler.NewBodegaHandler(bodegaService, autoevaluacionService)
 	responsableHandler := handler.NewResponsableHandler(responsableService)
 	autoevaluacionHandler := handler.NewAutoevaluacionHandler(autoevaluacionService)
 	evidenciaHandler := handler.NewEvidenciaHandler(evidenciaService)
+	adminHandler := handler.NewAdminHandler(adminService)
 
 	log.Println("✓ Handlers inicializados")
 
@@ -146,7 +149,8 @@ func main() {
 	r.GET("/api/cuentas/{id}", protect(cuentaHandler.GetByID))
 	r.PUT("/api/cuentas/{id}", protect(cuentaHandler.UpdatePassword))
 
-	// Bodegas (protegidas)
+	// Bodegas (protegidas) - static routes BEFORE dynamic
+	r.GET("/api/bodegas/{id}/resultados-autoevaluacion", protect(bodegaHandler.GetResultadosAutoevaluacion))
 	r.GET("/api/bodegas/{id}", protect(bodegaHandler.GetByID))
 	r.PUT("/api/bodegas/{id}", protect(bodegaHandler.Update))
 
@@ -157,8 +161,14 @@ func main() {
 	r.GET("/api/cuentas/{cuenta_id}/responsables", protect(responsableHandler.GetByCuentaID))
 	r.POST("/api/cuentas/{cuenta_id}/responsables", protect(responsableHandler.Create))
 
-	// Autoevaluaciones (protegidas)
+	// Admin (protegidas)
+	r.GET("/api/admin/stats", protect(adminHandler.GetStats))
+	r.GET("/api/admin/evaluaciones", protect(adminHandler.GetAllEvaluaciones))
+
+	// Autoevaluaciones (protegidas) - static routes BEFORE dynamic
+	r.GET("/api/autoevaluaciones/historial", protect(autoevaluacionHandler.GetHistorialAutoevaluaciones))
 	r.POST("/api/autoevaluaciones", protect(autoevaluacionHandler.CreateAutoevaluacion))
+	r.GET("/api/autoevaluaciones/{id_autoevaluacion}/resultados", protect(autoevaluacionHandler.GetResultadosAutoevaluacion))
 	r.GET("/api/autoevaluaciones/{id_autoevaluacion}/segmentos", protect(autoevaluacionHandler.GetSegmentos))
 	r.PUT("/api/autoevaluaciones/{id_autoevaluacion}/segmento", protect(autoevaluacionHandler.SeleccionarSegmento))
 	r.GET("/api/autoevaluaciones/{id_autoevaluacion}/estructura", protect(autoevaluacionHandler.GetEstructura))

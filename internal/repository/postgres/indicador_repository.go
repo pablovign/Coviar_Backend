@@ -63,3 +63,24 @@ func (r *IndicadorRepository) FindBySegmento(ctx context.Context, idSegmento int
 
 	return indicadorIds, rows.Err()
 }
+
+func (r *IndicadorRepository) FindByID(ctx context.Context, id int) (*domain.Indicador, error) {
+	query := `
+		SELECT id_indicador, id_capitulo, nombre, descripcion, orden
+		FROM indicadores
+		WHERE id_indicador = $1
+	`
+
+	ind := &domain.Indicador{}
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
+		&ind.ID, &ind.IDCapitulo, &ind.Nombre, &ind.Descripcion, &ind.Orden,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, domain.ErrNotFound
+		}
+		return nil, fmt.Errorf("error finding indicador: %w", err)
+	}
+
+	return ind, nil
+}
