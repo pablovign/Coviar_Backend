@@ -19,6 +19,20 @@ func NewBodegaHandler(service *service.BodegaService, autoevaluacionService *ser
 	return &BodegaHandler{service: service, autoevaluacionService: autoevaluacionService}
 }
 
+func (h *BodegaHandler) GetAll(w http.ResponseWriter, r *http.Request) {
+	bodegas, err := h.service.GetAll(r.Context())
+	if err != nil {
+		httputil.HandleServiceError(w, err)
+		return
+	}
+
+	if bodegas == nil {
+		bodegas = []*domain.Bodega{}
+	}
+
+	httputil.RespondJSON(w, http.StatusOK, bodegas)
+}
+
 func (h *BodegaHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	idStr := router.GetParam(r, "id")
 	id, err := strconv.Atoi(idStr)

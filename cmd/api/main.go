@@ -164,6 +164,8 @@ func main() {
 	// Admin (protegidas)
 	r.GET("/api/admin/stats", protect(adminHandler.GetStats))
 	r.GET("/api/admin/evaluaciones", protect(adminHandler.GetAllEvaluaciones))
+	r.GET("/api/admin/bodegas", protect(bodegaHandler.GetAll))
+	r.POST("/api/admin/bodegas/{id}/cambiar-password", protect(AdminCambiarPasswordBodega(db.DB)))
 
 	// Autoevaluaciones (protegidas) - static routes BEFORE dynamic
 	r.GET("/api/autoevaluaciones/historial", protect(autoevaluacionHandler.GetHistorialAutoevaluaciones))

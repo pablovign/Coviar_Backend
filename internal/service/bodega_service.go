@@ -20,6 +20,10 @@ func (s *BodegaService) GetByID(ctx context.Context, id int) (*domain.Bodega, er
 	return s.bodegaRepo.FindByID(ctx, id)
 }
 
+func (s *BodegaService) GetAll(ctx context.Context) ([]*domain.Bodega, error) {
+	return s.bodegaRepo.GetAll(ctx)
+}
+
 func (s *BodegaService) Update(ctx context.Context, id int, dto *domain.BodegaUpdateDTO) error {
 	if err := validator.ValidateTelefono(dto.Telefono); err != nil {
 		return domain.ErrValidation

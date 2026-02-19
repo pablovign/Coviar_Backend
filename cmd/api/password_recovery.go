@@ -9,9 +9,11 @@ import (
 	"net/http"
 	"net/smtp"
 	"os"
+	"strconv"
 	"time"
 
 	"coviar_backend/pkg/httputil"
+	"coviar_backend/pkg/router"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -226,6 +228,72 @@ func ResetPassword(db *sql.DB) http.HandlerFunc {
 		}
 
 		httputil.RespondJSON(w, http.StatusOK, passwordResetResponse{true, "Contraseña actualizada exitosamente"})
+	}
+}
+
+type adminCambiarPasswordRequest struct {
+	NuevaPassword string `json:"nueva_password"`
+}
+
+// AdminCambiarPasswordBodega maneja POST /api/admin/bodegas/{id}/cambiar-password
+// Permite al admin establecer directamente una nueva contraseña para la cuenta de una bodega
+func AdminCambiarPasswordBodega(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		idStr := router.GetParam(r, "id")
+		idBodega, err := strconv.Atoi(idStr)
+		if err != nil {
+			httputil.RespondJSON(w, http.StatusBadRequest, passwordResetResponse{false, "ID de bodega inválido"})
+			return
+		}
+
+		var req adminCambiarPasswordRequest
+		if err := httputil.DecodeJSON(r, &req); err != nil {
+			httputil.RespondJSON(w, http.StatusBadRequest, passwordResetResponse{false, "Datos inválidos"})
+			return
+		}
+
+		if len(req.NuevaPassword) < 6 {
+			httputil.RespondJSON(w, http.StatusBadRequest, passwordResetResponse{false, "La contraseña debe tener al menos 6 caracteres"})
+			return
+		}
+
+		// Buscar cuenta asociada a la bodega
+		var userID int
+		err = db.QueryRowContext(r.Context(),
+			"SELECT id_cuenta FROM cuentas WHERE id_bodega = $1 AND tipo != 'ADMINISTRADOR_APP' LIMIT 1",
+			idBodega,
+		).Scan(&userID)
+
+		if err == sql.ErrNoRows {
+			httputil.RespondJSON(w, http.StatusNotFound, passwordResetResponse{false, "No se encontró cuenta asociada a esta bodega"})
+			return
+		}
+		if err != nil {
+			log.Printf("Error al buscar cuenta de bodega %d: %v", idBodega, err)
+			httputil.RespondJSON(w, http.StatusInternalServerError, passwordResetResponse{false, "Error al buscar la cuenta"})
+			return
+		}
+
+		// Hashear nueva contraseña
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NuevaPassword), bcrypt.DefaultCost)
+		if err != nil {
+			log.Printf("Error hasheando contraseña: %v", err)
+			httputil.RespondJSON(w, http.StatusInternalServerError, passwordResetResponse{false, "Error al procesar contraseña"})
+			return
+		}
+
+		// Actualizar contraseña directamente
+		if _, err = db.ExecContext(r.Context(),
+			"UPDATE cuentas SET password_hash = $1 WHERE id_cuenta = $2",
+			string(hashedPassword), userID,
+		); err != nil {
+			log.Printf("Error al actualizar contraseña de bodega %d: %v", idBodega, err)
+			httputil.RespondJSON(w, http.StatusInternalServerError, passwordResetResponse{false, "Error al actualizar contraseña"})
+			return
+		}
+
+		log.Printf("✅ Contraseña cambiada por admin para bodega %d (cuenta %d)", idBodega, userID)
+		httputil.RespondJSON(w, http.StatusOK, passwordResetResponse{true, "Contraseña actualizada correctamente"})
 	}
 }
 
