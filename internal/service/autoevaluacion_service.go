@@ -145,6 +145,11 @@ func (s *AutoevaluacionService) SeleccionarSegmento(ctx context.Context, idAutoe
 		return fmt.Errorf("error selecting segmento: %w", err)
 	}
 
+	// Inicializar estado_evidencia a SIN_EVIDENCIA
+	if err := s.autoevaluacionRepo.UpdateEvidenciaStatus(ctx, idAutoevaluacion, domain.EstadoSinEvidencia); err != nil {
+		return fmt.Errorf("error initializing evidencia status: %w", err)
+	}
+
 	return nil
 }
 

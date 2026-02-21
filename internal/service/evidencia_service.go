@@ -294,16 +294,7 @@ func (s *EvidenciaService) updateAutoevaluacionEvidenciaStatus(ctx context.Conte
 		return fmt.Errorf("error getting respuestas: %w", err)
 	}
 
-	respuestasSegmento := 0
-	for _, r := range respuestas {
-		for _, idIndicador := range indicadores {
-			if r.IDIndicador == idIndicador {
-				respuestasSegmento++
-				break
-			}
-		}
-	}
-
+	// Contar evidencias de respuestas que pertenecen a indicadores del segmento
 	evidenciasSegmento := 0
 	for _, r := range respuestas {
 		for _, idIndicador := range indicadores {
@@ -317,10 +308,13 @@ func (s *EvidenciaService) updateAutoevaluacionEvidenciaStatus(ctx context.Conte
 		}
 	}
 
+	// Comparar contra el total de indicadores habilitados del segmento
+	totalIndicadores := len(indicadores)
+
 	var estado domain.EstadoEvidencia
 	if evidenciasSegmento == 0 {
 		estado = domain.EstadoSinEvidencia
-	} else if evidenciasSegmento == respuestasSegmento && respuestasSegmento > 0 {
+	} else if evidenciasSegmento == totalIndicadores && totalIndicadores > 0 {
 		estado = domain.EstadoCompleta
 	} else {
 		estado = domain.EstadoParcial
