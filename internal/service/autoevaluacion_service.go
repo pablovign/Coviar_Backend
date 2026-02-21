@@ -78,6 +78,7 @@ func (s *AutoevaluacionService) CreateAutoevaluacion(ctx context.Context, idBode
 		respuestasDTO := make([]domain.GuardarRespuestaRequest, len(respuestas))
 		for i, resp := range respuestas {
 			respuestasDTO[i] = domain.GuardarRespuestaRequest{
+				IDRespuesta:      resp.ID,
 				IDIndicador:      resp.IDIndicador,
 				IDNivelRespuesta: resp.IDNivelRespuesta,
 			}

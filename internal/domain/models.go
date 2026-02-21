@@ -268,6 +268,7 @@ type SeleccionarSegmentoRequest struct {
 }
 
 type GuardarRespuestaRequest struct {
+	IDRespuesta      int `json:"id_respuesta,omitempty"`
 	IDIndicador      int `json:"id_indicador"`
 	IDNivelRespuesta int `json:"id_nivel_respuesta"`
 }
@@ -316,11 +317,11 @@ type ObtenerEvidenciaResponse struct {
 // ============================================
 
 type AdminStatsResponse struct {
-	TotalBodegas            int                   `json:"totalBodegas"`
-	EvaluacionesCompletadas int                   `json:"evaluacionesCompletadas"`
-	PromedioSostenibilidad  float64               `json:"promedioSostenibilidad"`
-	NivelPromedio           string                `json:"nivelPromedio"`
-	DistribucionNiveles     DistribucionNiveles   `json:"distribucionNiveles"`
+	TotalBodegas            int                 `json:"totalBodegas"`
+	EvaluacionesCompletadas int                 `json:"evaluacionesCompletadas"`
+	PromedioSostenibilidad  float64             `json:"promedioSostenibilidad"`
+	NivelPromedio           string              `json:"nivelPromedio"`
+	DistribucionNiveles     DistribucionNiveles `json:"distribucionNiveles"`
 }
 
 type DistribucionNiveles struct {
@@ -345,20 +346,20 @@ type EvaluacionListItem struct {
 // ============================================
 
 type HistorialItemResponse struct {
-	IDAutoevaluacion        int                      `json:"id_autoevaluacion"`
-	FechaInicio             string                   `json:"fecha_inicio"`
-	FechaFinalizacion       string                   `json:"fecha_finalizacion"`
-	Estado                  string                   `json:"estado"`
-	IDBodega                int                      `json:"id_bodega"`
-	IDSegmento              *int                     `json:"id_segmento"`
-	NombreSegmento          string                   `json:"nombre_segmento,omitempty"`
-	PuntajeFinal            *int                     `json:"puntaje_final"`
-	PuntajeMaximo           int                      `json:"puntaje_maximo"`
-	Porcentaje              float64                  `json:"porcentaje"`
-	IDNivelSostenibilidad   *int                     `json:"id_nivel_sostenibilidad"`
-	NivelSostenibilidad     *NivelSostenibilidadInfo `json:"nivel_sostenibilidad,omitempty"`
-	IndicadoresRespondidos  int                      `json:"indicadores_respondidos"`
-	IndicadoresTotal        int                      `json:"indicadores_total"`
+	IDAutoevaluacion       int                      `json:"id_autoevaluacion"`
+	FechaInicio            string                   `json:"fecha_inicio"`
+	FechaFinalizacion      string                   `json:"fecha_finalizacion"`
+	Estado                 string                   `json:"estado"`
+	IDBodega               int                      `json:"id_bodega"`
+	IDSegmento             *int                     `json:"id_segmento"`
+	NombreSegmento         string                   `json:"nombre_segmento,omitempty"`
+	PuntajeFinal           *int                     `json:"puntaje_final"`
+	PuntajeMaximo          int                      `json:"puntaje_maximo"`
+	Porcentaje             float64                  `json:"porcentaje"`
+	IDNivelSostenibilidad  *int                     `json:"id_nivel_sostenibilidad"`
+	NivelSostenibilidad    *NivelSostenibilidadInfo `json:"nivel_sostenibilidad,omitempty"`
+	IndicadoresRespondidos int                      `json:"indicadores_respondidos"`
+	IndicadoresTotal       int                      `json:"indicadores_total"`
 }
 
 type NivelSostenibilidadInfo struct {
@@ -381,13 +382,13 @@ type ResultadoDetalladoResponse struct {
 }
 
 type ResultadoCapituloDetallado struct {
-	IDCapitulo             int                        `json:"id_capitulo"`
-	Nombre                 string                     `json:"nombre"`
-	PuntajeObtenido        int                        `json:"puntaje_obtenido"`
-	PuntajeMaximo          int                        `json:"puntaje_maximo"`
-	Porcentaje             float64                    `json:"porcentaje"`
-	IndicadoresCompletados int                        `json:"indicadores_completados"`
-	IndicadoresTotal       int                        `json:"indicadores_total"`
+	IDCapitulo             int                         `json:"id_capitulo"`
+	Nombre                 string                      `json:"nombre"`
+	PuntajeObtenido        int                         `json:"puntaje_obtenido"`
+	PuntajeMaximo          int                         `json:"puntaje_maximo"`
+	Porcentaje             float64                     `json:"porcentaje"`
+	IndicadoresCompletados int                         `json:"indicadores_completados"`
+	IndicadoresTotal       int                         `json:"indicadores_total"`
 	Indicadores            []ResultadoIndicadorDetalle `json:"indicadores"`
 }
 
@@ -409,11 +410,11 @@ type ResultadoIndicadorDetalle struct {
 // ============================================
 
 type ResultadosBodegaResponse struct {
-	Bodega             BodegaResumen            `json:"bodega"`
-	Autoevaluacion     AutoevaluacionResumen    `json:"autoevaluacion"`
-	Segmento           SegmentoResumen          `json:"segmento"`
-	NivelSustentabilidad NivelResumen           `json:"nivel_sustentabilidad"`
-	Capitulos          []CapituloResultadoSimple `json:"capitulos"`
+	Bodega               BodegaResumen             `json:"bodega"`
+	Autoevaluacion       AutoevaluacionResumen     `json:"autoevaluacion"`
+	Segmento             SegmentoResumen           `json:"segmento"`
+	NivelSustentabilidad NivelResumen              `json:"nivel_sustentabilidad"`
+	Capitulos            []CapituloResultadoSimple `json:"capitulos"`
 }
 
 type BodegaResumen struct {
@@ -440,10 +441,10 @@ type CapituloResultadoSimple struct {
 }
 
 type IndicadorResultadoSimple struct {
-	Nombre           string                       `json:"nombre"`
-	Descripcion      string                       `json:"descripcion"`
-	Orden            int                          `json:"orden"`
-	NivelesRespuesta []NivelRespuestaResultado    `json:"niveles_respuesta"`
+	Nombre           string                    `json:"nombre"`
+	Descripcion      string                    `json:"descripcion"`
+	Orden            int                       `json:"orden"`
+	NivelesRespuesta []NivelRespuestaResultado `json:"niveles_respuesta"`
 }
 
 type NivelRespuestaResultado struct {
