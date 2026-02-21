@@ -100,6 +100,48 @@ func (r *AdminRepository) GetStats(ctx context.Context) (*domain.AdminStatsRespo
 		stats.NivelPromedio = "Sin datos"
 	}
 
+	// Distribución por segmento: última evaluación completada de cada bodega
+	segRows, err := r.db.QueryContext(ctx, `
+		WITH ultima_ae AS (
+			SELECT DISTINCT ON (a.id_bodega)
+				a.id_bodega,
+				a.id_segmento,
+				a.id_nivel_sostenibilidad
+			FROM autoevaluaciones a
+			WHERE a.estado = 'COMPLETADA'
+			  AND a.id_segmento IS NOT NULL
+			  AND a.id_nivel_sostenibilidad IS NOT NULL
+			ORDER BY a.id_bodega, a.fecha_fin DESC
+		)
+		SELECT
+			s.id_segmento,
+			s.nombre AS nombre_segmento,
+			COUNT(CASE WHEN LOWER(ns.nombre) LIKE '%alto%' THEN 1 END)::int AS alto,
+			COUNT(CASE WHEN LOWER(ns.nombre) LIKE '%medio%' OR LOWER(ns.nombre) LIKE '%media%' THEN 1 END)::int AS medio,
+			COUNT(CASE WHEN LOWER(ns.nombre) LIKE '%mínimo%' OR LOWER(ns.nombre) LIKE '%minimo%' OR LOWER(ns.nombre) LIKE '%bajo%' THEN 1 END)::int AS minimo
+		FROM segmentos s
+		LEFT JOIN ultima_ae uae ON uae.id_segmento = s.id_segmento
+		LEFT JOIN niveles_sostenibilidad ns ON uae.id_nivel_sostenibilidad = ns.id_nivel_sostenibilidad
+		GROUP BY s.id_segmento, s.nombre
+		ORDER BY s.id_segmento
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("error querying distribucion por segmento: %w", err)
+	}
+	defer segRows.Close()
+
+	stats.DistribucionPorSegmento = []domain.SegmentoDistribucion{}
+	for segRows.Next() {
+		var seg domain.SegmentoDistribucion
+		if err := segRows.Scan(&seg.IDSegmento, &seg.NombreSegmento, &seg.Alto, &seg.Medio, &seg.Minimo); err != nil {
+			return nil, fmt.Errorf("error scanning segmento distribucion: %w", err)
+		}
+		stats.DistribucionPorSegmento = append(stats.DistribucionPorSegmento, seg)
+	}
+	if err := segRows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating segmento rows: %w", err)
+	}
+
 	return &stats, nil
 }
 

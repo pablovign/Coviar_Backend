@@ -154,3 +154,64 @@ func (r *BodegaRepository) GetAll(ctx context.Context) ([]*domain.Bodega, error)
 
 	return bodegas, rows.Err()
 }
+
+func (r *BodegaRepository) GetAllWithUltimaEval(ctx context.Context) ([]*domain.BodegaAdminItem, error) {
+	query := `
+		SELECT
+			b.id_bodega, b.razon_social, b.nombre_fantasia, b.cuit,
+			b.inv_bod, b.inv_vin, b.calle, b.numeracion, b.id_localidad,
+			b.telefono, b.email_institucional, b.fecha_registro,
+			s.nombre AS segmento,
+			ns.nombre AS nivel_sostenibilidad,
+			l.nombre AS localidad,
+			d.nombre AS departamento,
+			p.nombre AS provincia,
+			c.email_login AS email_cuenta,
+			ultima_ae.fecha_fin AS fecha_ultima_evaluacion,
+			r.nombre || ' ' || r.apellido AS responsable_activo
+		FROM bodegas b
+		LEFT JOIN LATERAL (
+			SELECT a.id_segmento, a.id_nivel_sostenibilidad, a.fecha_fin
+			FROM autoevaluaciones a
+			WHERE a.id_bodega = b.id_bodega
+			  AND a.estado = 'COMPLETADA'
+			  AND a.id_segmento IS NOT NULL
+			  AND a.id_nivel_sostenibilidad IS NOT NULL
+			ORDER BY a.fecha_fin DESC
+			LIMIT 1
+		) ultima_ae ON true
+		LEFT JOIN segmentos s ON ultima_ae.id_segmento = s.id_segmento
+		LEFT JOIN niveles_sostenibilidad ns ON ultima_ae.id_nivel_sostenibilidad = ns.id_nivel_sostenibilidad
+		LEFT JOIN localidades l ON b.id_localidad = l.id_localidad
+		LEFT JOIN departamentos d ON l.id_departamento = d.id_departamento
+		LEFT JOIN provincias p ON d.id_provincia = p.id_provincia
+		LEFT JOIN cuentas c ON c.id_bodega = b.id_bodega AND c.tipo = 'BODEGA'
+		LEFT JOIN responsables r ON r.id_cuenta = c.id_cuenta AND r.activo = true
+		ORDER BY b.id_bodega
+	`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("error getting bodegas with ultima eval: %w", err)
+	}
+	defer rows.Close()
+
+	var bodegas []*domain.BodegaAdminItem
+	for rows.Next() {
+		b := &domain.BodegaAdminItem{}
+		err := rows.Scan(
+			&b.ID, &b.RazonSocial, &b.NombreFantasia, &b.CUIT,
+			&b.InvBod, &b.InvVin, &b.Calle, &b.Numeracion,
+			&b.IDLocalidad, &b.Telefono, &b.EmailInstitucional, &b.FechaRegistro,
+			&b.Segmento, &b.NivelSostenibilidad,
+			&b.Localidad, &b.Departamento, &b.Provincia,
+			&b.EmailCuenta, &b.FechaUltimaEvaluacion, &b.ResponsableActivo,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning bodega admin item: %w", err)
+		}
+		bodegas = append(bodegas, b)
+	}
+
+	return bodegas, rows.Err()
+}

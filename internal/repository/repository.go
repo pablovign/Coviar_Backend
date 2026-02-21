@@ -20,6 +20,7 @@ type BodegaRepository interface {
 	Update(ctx context.Context, tx Transaction, bodega *domain.Bodega) error
 	Delete(ctx context.Context, tx Transaction, id int) error
 	GetAll(ctx context.Context) ([]*domain.Bodega, error)
+	GetAllWithUltimaEval(ctx context.Context) ([]*domain.BodegaAdminItem, error)
 }
 
 // Repositorios para Cuenta

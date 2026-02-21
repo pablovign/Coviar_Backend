@@ -24,6 +24,10 @@ func (s *BodegaService) GetAll(ctx context.Context) ([]*domain.Bodega, error) {
 	return s.bodegaRepo.GetAll(ctx)
 }
 
+func (s *BodegaService) GetAllAdmin(ctx context.Context) ([]*domain.BodegaAdminItem, error) {
+	return s.bodegaRepo.GetAllWithUltimaEval(ctx)
+}
+
 func (s *BodegaService) Update(ctx context.Context, id int, dto *domain.BodegaUpdateDTO) error {
 	if err := validator.ValidateTelefono(dto.Telefono); err != nil {
 		return domain.ErrValidation

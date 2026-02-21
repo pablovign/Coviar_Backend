@@ -40,6 +40,31 @@ type BodegaUpdateDTO struct {
 	NombreFantasia     string `json:"nombre_fantasia"`
 }
 
+// BodegaAdminItem es el DTO para listar bodegas en el panel admin,
+// incluyendo el segmento y nivel de sostenibilidad de su última evaluación completada.
+type BodegaAdminItem struct {
+	ID                    int        `json:"id_bodega"`
+	RazonSocial           string     `json:"razon_social"`
+	NombreFantasia        string     `json:"nombre_fantasia"`
+	CUIT                  string     `json:"cuit"`
+	InvBod                *string    `json:"inv_bod,omitempty"`
+	InvVin                *string    `json:"inv_vin,omitempty"`
+	Calle                 string     `json:"calle"`
+	Numeracion            string     `json:"numeracion"`
+	IDLocalidad           int        `json:"id_localidad"`
+	Telefono              string     `json:"telefono"`
+	EmailInstitucional    string     `json:"email_institucional"`
+	FechaRegistro         time.Time  `json:"fecha_registro,omitempty"`
+	Segmento              *string    `json:"segmento"`
+	NivelSostenibilidad   *string    `json:"nivel_sostenibilidad"`
+	Localidad             *string    `json:"localidad"`
+	Departamento          *string    `json:"departamento"`
+	Provincia             *string    `json:"provincia"`
+	EmailCuenta           *string    `json:"email_cuenta"`
+	FechaUltimaEvaluacion *time.Time `json:"fecha_ultima_evaluacion"`
+	ResponsableActivo     *string    `json:"responsable_activo"`
+}
+
 // ============================================
 // MODELOS DE CUENTA
 // ============================================
@@ -317,17 +342,26 @@ type ObtenerEvidenciaResponse struct {
 // ============================================
 
 type AdminStatsResponse struct {
-	TotalBodegas            int                 `json:"totalBodegas"`
-	EvaluacionesCompletadas int                 `json:"evaluacionesCompletadas"`
-	PromedioSostenibilidad  float64             `json:"promedioSostenibilidad"`
-	NivelPromedio           string              `json:"nivelPromedio"`
-	DistribucionNiveles     DistribucionNiveles `json:"distribucionNiveles"`
+	TotalBodegas            int                    `json:"totalBodegas"`
+	EvaluacionesCompletadas int                    `json:"evaluacionesCompletadas"`
+	PromedioSostenibilidad  float64                `json:"promedioSostenibilidad"`
+	NivelPromedio           string                 `json:"nivelPromedio"`
+	DistribucionNiveles     DistribucionNiveles    `json:"distribucionNiveles"`
+	DistribucionPorSegmento []SegmentoDistribucion `json:"distribucionPorSegmento"`
 }
 
 type DistribucionNiveles struct {
 	Minimo int `json:"minimo"`
 	Medio  int `json:"medio"`
 	Alto   int `json:"alto"`
+}
+
+type SegmentoDistribucion struct {
+	IDSegmento     int    `json:"id_segmento"`
+	NombreSegmento string `json:"nombre_segmento"`
+	Alto           int    `json:"alto"`
+	Medio          int    `json:"medio"`
+	Minimo         int    `json:"minimo"`
 }
 
 type EvaluacionListItem struct {

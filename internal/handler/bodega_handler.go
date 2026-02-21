@@ -20,14 +20,14 @@ func NewBodegaHandler(service *service.BodegaService, autoevaluacionService *ser
 }
 
 func (h *BodegaHandler) GetAll(w http.ResponseWriter, r *http.Request) {
-	bodegas, err := h.service.GetAll(r.Context())
+	bodegas, err := h.service.GetAllAdmin(r.Context())
 	if err != nil {
 		httputil.HandleServiceError(w, err)
 		return
 	}
 
 	if bodegas == nil {
-		bodegas = []*domain.Bodega{}
+		bodegas = []*domain.BodegaAdminItem{}
 	}
 
 	httputil.RespondJSON(w, http.StatusOK, bodegas)
