@@ -78,6 +78,7 @@ func (s *AutoevaluacionService) CreateAutoevaluacion(ctx context.Context, idBode
 		respuestasDTO := make([]domain.GuardarRespuestaRequest, len(respuestas))
 		for i, resp := range respuestas {
 			respuestasDTO[i] = domain.GuardarRespuestaRequest{
+				IDRespuesta:      resp.ID,
 				IDIndicador:      resp.IDIndicador,
 				IDNivelRespuesta: resp.IDNivelRespuesta,
 			}
@@ -143,6 +144,11 @@ func (s *AutoevaluacionService) SeleccionarSegmento(ctx context.Context, idAutoe
 	err = s.autoevaluacionRepo.UpdateSegmento(ctx, idAutoevaluacion, idSegmento)
 	if err != nil {
 		return fmt.Errorf("error selecting segmento: %w", err)
+	}
+
+	// Inicializar estado_evidencia a SIN_EVIDENCIA
+	if err := s.autoevaluacionRepo.UpdateEvidenciaStatus(ctx, idAutoevaluacion, domain.EstadoSinEvidencia); err != nil {
+		return fmt.Errorf("error initializing evidencia status: %w", err)
 	}
 
 	return nil
